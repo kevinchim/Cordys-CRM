@@ -31,6 +31,7 @@
         :row="currentRow"
         :type="ModuleConfigEnum.CLUE_MANAGEMENT"
         @refresh="refreshTable"
+        @saved="refreshTable"
       />
     </div>
   </CrmDrawer>

@@ -22,6 +22,8 @@ import cn.cordys.crm.customer.dto.CustomerPoolPickRuleDTO;
 import cn.cordys.crm.customer.dto.CustomerPoolRecycleRuleDTO;
 import cn.cordys.crm.customer.dto.request.CustomerPoolAddRequest;
 import cn.cordys.crm.customer.dto.request.CustomerPoolUpdateRequest;
+import cn.cordys.crm.contract.domain.Contract;
+import cn.cordys.crm.contract.mapper.ExtContractMapper;
 import cn.cordys.crm.customer.mapper.ExtCustomerPoolMapper;
 import cn.cordys.crm.system.constants.RecycleConditionColumnKey;
 import cn.cordys.crm.system.constants.RecycleConditionOperator;
@@ -62,6 +64,8 @@ public class CustomerPoolService {
     private BaseMapper<CustomerPoolRecycleRule> customerPoolRecycleRuleMapper;
     @Resource
     private ExtCustomerPoolMapper extCustomerPoolMapper;
+    @Resource
+    private ExtContractMapper extContractMapper;
     @Resource
     private UserExtendService userExtendService;
     @Resource
@@ -142,6 +146,9 @@ public class CustomerPoolService {
 
     private void delOldTime(CustomerPoolRecycleRuleDTO recycleRule) {
         recycleRule.getConditions().forEach(condition -> {
+            if (RecycleConditionColumnKey.CONTRACT_START_TIME.equals(condition.getColumn())) {
+                return;
+            }
             if (Strings.CS.equals(condition.getOperator(), RecycleConditionOperator.DYNAMICS.name())) {
                 String[] split = condition.getValue().split(",");
                 if (StringUtils.isNotBlank(condition.getValue()) && split.length == 2) {
@@ -198,6 +205,14 @@ public class CustomerPoolService {
         customerPoolMapper.insert(pool);
         CustomerPoolPickRule pickRule = new CustomerPoolPickRule();
         BeanUtils.copyBean(pickRule, request.getPickRule());
+        validateViewLimitMutualExclusion(request.getPickRule());
+        // 设置自定义字段默认值（防止 null 值导致 SQL 错误）
+        if (pickRule.getLimitDailyView() == null) pickRule.setLimitDailyView(false);
+        if (pickRule.getDailyViewCount() == null) pickRule.setDailyViewCount(0);
+        if (pickRule.getLimitMonthlyView() == null) pickRule.setLimitMonthlyView(false);
+        if (pickRule.getMonthlyViewCount() == null) pickRule.setMonthlyViewCount(0);
+        if (pickRule.getLimitMonthlyPick() == null) pickRule.setLimitMonthlyPick(false);
+        if (pickRule.getMonthlyPickCount() == null) pickRule.setMonthlyPickCount(0);
         pickRule.setId(IDGenerator.nextStr());
         pickRule.setPoolId(pool.getId());
         pickRule.setCreateUser(currentUserId);
@@ -249,6 +264,14 @@ public class CustomerPoolService {
         customerPoolMapper.update(pool);
         CustomerPoolPickRule pickRule = new CustomerPoolPickRule();
         BeanUtils.copyBean(pickRule, request.getPickRule());
+        validateViewLimitMutualExclusion(request.getPickRule());
+        // 设置自定义字段默认值（防止 null 值导致 SQL 错误）
+        if (pickRule.getLimitDailyView() == null) pickRule.setLimitDailyView(false);
+        if (pickRule.getDailyViewCount() == null) pickRule.setDailyViewCount(0);
+        if (pickRule.getLimitMonthlyView() == null) pickRule.setLimitMonthlyView(false);
+        if (pickRule.getMonthlyViewCount() == null) pickRule.setMonthlyViewCount(0);
+        if (pickRule.getLimitMonthlyPick() == null) pickRule.setLimitMonthlyPick(false);
+        if (pickRule.getMonthlyPickCount() == null) pickRule.setMonthlyPickCount(0);
         pickRule.setPoolId(pool.getId());
         pickRule.setUpdateUser(currentUserId);
         pickRule.setUpdateTime(System.currentTimeMillis());
@@ -444,8 +467,9 @@ public class CustomerPoolService {
      */
     public Map<List<String>, CustomerPool> getOwnersBestMatchPoolMap(List<CustomerPool> pools) {
         Map<List<String>, CustomerPool> poolMap = new HashMap<>(4);
-        pools.sort(Comparator.comparing(CustomerPool::getCreateTime).reversed());
-        for (CustomerPool pool : pools) {
+        List<CustomerPool> sortedPools = new ArrayList<>(pools);
+        sortedPools.sort(Comparator.comparing(CustomerPool::getCreateTime).reversed());
+        for (CustomerPool pool : sortedPools) {
             List<String> exitOwnerIds = poolMap.keySet().stream().flatMap(List::stream).toList();
             List<String> scopeIds = JSON.parseArray(pool.getScopeId(), String.class);
             List<String> ownerIds = userExtendService.getScopeOwnerIds(scopeIds, pool.getOrganizationId());
@@ -490,8 +514,67 @@ public class CustomerPoolService {
             } else {
                 return RecycleConditionUtils.matchTime(condition, customer.getCreateTime()) || RecycleConditionUtils.matchTime(condition, customer.getCollectionTime());
             }
+        } else if (Strings.CS.equals(condition.getColumn(), RecycleConditionColumnKey.CONTRACT_START_TIME)) {
+            return matchContractStartTime(condition, customer);
         } else {
             return RecycleConditionUtils.matchTime(condition, customer.getFollowTime());
+        }
+    }
+
+    /**
+     * 匹配合同开始时间回收规则
+     * value 格式: "N,M" (N=有合同天数, M=无合同天数)
+     */
+    private boolean matchContractStartTime(RuleConditionDTO condition, Customer customer) {
+        if (condition.getValue() == null) {
+            return false;
+        }
+        String[] parts = condition.getValue().split(",");
+        if (parts.length < 2) {
+            return false;
+        }
+        int contractDays;
+        int noContractDays;
+        try {
+            contractDays = Integer.parseInt(parts[0]);
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        try {
+            noContractDays = Integer.parseInt(parts[1]);
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+
+        List<Contract> approvedContracts = extContractMapper.selectApprovedByCustomerId(customer.getId());
+        if (CollectionUtils.isNotEmpty(approvedContracts)) {
+            long maxStartTime = approvedContracts.stream()
+                    .map(Contract::getStartTime)
+                    .filter(Objects::nonNull)
+                    .mapToLong(Long::longValue)
+                    .max()
+                    .orElse(0L);
+            return maxStartTime + contractDays * 86400000L < now;
+        } else {
+            Long createTime = customer.getCreateTime();
+            return createTime != null && createTime + noContractDays * 86400000L < now;
+        }
+    }
+
+    /**
+     * 校验每日/每月查看限制互斥 - 保存时调用
+     */
+    private void validateViewLimitMutualExclusion(CustomerPoolPickRuleDTO pickRule) {
+        if (pickRule == null) {
+            return;
+        }
+        boolean dailyEnabled = pickRule.getLimitDailyView() != null && pickRule.getLimitDailyView()
+                && pickRule.getDailyViewCount() != null && pickRule.getDailyViewCount() > 0;
+        boolean monthlyEnabled = pickRule.getLimitMonthlyView() != null && pickRule.getLimitMonthlyView()
+                && pickRule.getMonthlyViewCount() != null && pickRule.getMonthlyViewCount() > 0;
+        if (dailyEnabled && monthlyEnabled) {
+            throw new GenericException(Translator.get("customer.view.limit.mutual.exclusion"));
         }
     }
 }

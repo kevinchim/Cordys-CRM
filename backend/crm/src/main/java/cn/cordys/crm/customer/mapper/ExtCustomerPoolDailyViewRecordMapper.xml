@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.cordys.crm.customer.mapper.ExtCustomerPoolDailyViewRecordMapper">
+
+    <select id="countTodayViews" resultType="java.lang.Integer">
+        select count(*) from customer_pool_daily_view_record
+        where pool_id = #{poolId}
+        and user_id = #{userId}
+        and view_time >= #{startOfDay}
+        and view_time &lt; #{endOfDay}
+    </select>
+
+    <select id="selectTodayViews" resultType="cn.cordys.crm.customer.domain.CustomerPoolDailyViewRecord">
+        select * from customer_pool_daily_view_record
+        where pool_id = #{poolId}
+        and user_id = #{userId}
+        and view_time >= #{startOfDay}
+        and view_time &lt; #{endOfDay}
+    </select>
+
+</mapper>

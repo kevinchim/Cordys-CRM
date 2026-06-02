@@ -8,6 +8,7 @@ import cn.cordys.common.pager.PagerWithOption;
 import cn.cordys.common.utils.ConditionFilterUtils;
 import cn.cordys.context.OrganizationContext;
 import cn.cordys.crm.customer.dto.CustomerPoolDTO;
+import cn.cordys.crm.customer.domain.CustomerPoolPickRule;
 import cn.cordys.crm.customer.dto.request.*;
 import cn.cordys.crm.customer.dto.response.CustomerGetResponse;
 import cn.cordys.crm.customer.dto.response.CustomerListResponse;
@@ -28,6 +29,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Tag(name = "公海客户")
 @RestController
@@ -48,12 +50,59 @@ public class PoolCustomerController {
         return poolCustomerService.getPoolOptions(SessionUtils.getUserId(), OrganizationContext.getOrganizationId());
     }
 
+    @GetMapping("/allocation-info")
+    @Operation(summary = "获取当前用户查看分配信息")
+    @RequiresPermissions(value = {PermissionConstants.CUSTOMER_MANAGEMENT_POOL_READ})
+    public Map<String, Object> getAllocationInfo(@RequestParam String poolId) {
+        CustomerPoolPickRule pickRule = poolCustomerService.getPoolPickRule(poolId);
+        if (pickRule == null) {
+            return Map.of("limited", false);
+        }
+        String periodType = poolCustomerService.determinePeriodType(pickRule);
+        if (periodType == null) {
+            return Map.of("limited", false);
+        }
+        String userId = SessionUtils.getUserId();
+        int allocated = poolCustomerService.getAllocatedCount(poolId, userId, pickRule);
+        int limit = poolCustomerService.getViewLimit(pickRule, periodType);
+        return Map.of(
+                "limited", true,
+                "periodType", periodType,
+                "allocated", allocated,
+                "limit", limit,
+                "insufficient", allocated < limit
+        );
+    }
+
     @PostMapping("/page")
     @Operation(summary = "客户列表")
     @RequiresPermissions(value = {PermissionConstants.CUSTOMER_MANAGEMENT_POOL_READ})
     public PagerWithOption<List<CustomerListResponse>> list(@Validated @RequestBody CustomerPageRequest request) {
         ConditionFilterUtils.parseCondition(request, FormKey.CUSTOMER.getKey());
-        return customerService.list(request, SessionUtils.getUserId(), OrganizationContext.getOrganizationId(), null);
+        String userId = SessionUtils.getUserId();
+        String orgId = OrganizationContext.getOrganizationId();
+
+        // 查看限制：获取或创建分配
+        if (request.getPoolId() != null) {
+            CustomerPoolPickRule pickRule = poolCustomerService.getPoolPickRule(request.getPoolId());
+            if (pickRule != null) {
+                List<String> allocatedIds = poolCustomerService.getOrAllocateCustomerIds(
+                        request.getPoolId(), userId, pickRule, orgId);
+                if (allocatedIds != null) {
+                    if (allocatedIds.isEmpty()) {
+                        PagerWithOption<List<CustomerListResponse>> emptyResult = new PagerWithOption<>();
+                        emptyResult.setList(List.of());
+                        emptyResult.setTotal(0);
+                        emptyResult.setPageSize(request.getPageSize());
+                        emptyResult.setCurrent(request.getCurrent());
+                        return emptyResult;
+                    }
+                    request.setCustomerIds(allocatedIds);
+                }
+            }
+        }
+
+        return customerService.list(request, userId, orgId, null);
     }
 
     @PostMapping("/pick")

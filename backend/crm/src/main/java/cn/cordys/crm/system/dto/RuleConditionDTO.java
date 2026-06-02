@@ -1,6 +1,7 @@
 package cn.cordys.crm.system.dto;
 
 import cn.cordys.crm.system.constants.RecycleConditionOperator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -31,6 +32,7 @@ public class RuleConditionDTO {
      *
      * @return 动态时间
      */
+    @JsonIgnore
     public LocalDateTime getDynamicTime() {
         if (!Strings.CS.equals(this.operator, RecycleConditionOperator.DYNAMICS.name())) {
             return null;
@@ -63,6 +65,7 @@ public class RuleConditionDTO {
     }
 
 
+    @JsonIgnore
     public List<Long> getDynamicTimeList() {
         if (!Strings.CS.equals(this.operator, RecycleConditionOperator.DYNAMICS.name())) {
             return null;

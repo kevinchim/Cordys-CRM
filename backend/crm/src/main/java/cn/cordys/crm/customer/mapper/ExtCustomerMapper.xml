@@ -92,6 +92,13 @@
             and c.in_shared_pool is true and c.pool_id = #{request.poolId}
         </if>
 
+        <if test="request.customerIds != null and request.customerIds.size() > 0">
+            and c.id in
+            <foreach collection="request.customerIds" item="cid" open="(" close=")" separator=",">
+                #{cid}
+            </foreach>
+        </if>
+
         <if test="dataPermission != null and dataPermission.self">
             and c.owner = #{userId}
         </if>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.cordys.crm.customer.mapper.ExtCustomerPoolViewAllocationMapper">
+
+    <select id="selectAllocatedCustomerIds" resultType="java.lang.String">
+        select customer_id from customer_pool_view_allocation
+        where pool_id = #{poolId}
+        and user_id = #{userId}
+        and period_type = #{periodType}
+        and period_key = #{periodKey}
+    </select>
+
+    <select id="selectAllocatedCustomerIdsExcludePicked" resultType="java.lang.String">
+        select a.customer_id from customer_pool_view_allocation a
+        left join customer c on a.customer_id = c.id
+        where a.pool_id = #{poolId}
+        and a.user_id = #{userId}
+        and a.period_type = #{periodType}
+        and a.period_key = #{periodKey}
+        and (c.owner is null
+        <if test="ownerIds != null and ownerIds.size() > 0">
+            or c.owner not in
+            <foreach collection="ownerIds" item="ownerId" open="(" close=")" separator=",">
+                #{ownerId}
+            </foreach>
+        </if>
+        )
+    </select>
+
+    <delete id="deleteByPeriod">
+        delete from customer_pool_view_allocation
+        where pool_id = #{poolId}
+        and user_id = #{userId}
+        and period_type = #{periodType}
+        and period_key = #{periodKey}
+    </delete>
+
+    <select id="selectCustomerIdsExcludeAllocated" resultType="java.lang.String">
+        select c.id from customer c
+        where c.pool_id = #{poolId}
+        and c.in_shared_pool is true
+        <if test="ownerIds != null and ownerIds.size() > 0">
+            and c.owner not in
+            <foreach collection="ownerIds" item="ownerId" open="(" close=")" separator=",">
+                #{ownerId}
+            </foreach>
+        </if>
+        and c.id not in (
+            select a2.customer_id from customer_pool_view_allocation a2
+            where a2.pool_id = #{poolId}
+            and a2.period_type = #{periodType}
+            and a2.period_key = #{periodKey}
+        )
+    </select>
+
+</mapper>

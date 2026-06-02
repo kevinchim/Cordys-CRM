@@ -30,6 +30,7 @@
         :row="currentRow"
         :type="ModuleConfigEnum.CUSTOMER_MANAGEMENT"
         @refresh="loadList"
+        @saved="loadList"
       />
     </div>
   </CrmDrawer>
@@ -53,7 +54,13 @@
   import CrmOperationButton from '@/components/business/crm-operation-button/index.vue';
   import AddOrEditPoolDrawer from '../addOrEditPoolDrawer.vue';
 
-  import { deleteCustomerPool, getCustomerPoolPage, noPickCustomerPool, switchCustomerPoolStatus } from '@/api/modules';
+  import {
+    deleteCustomerPool,
+    getCustomerPoolPage,
+    manualRecycleCustomerPool,
+    noPickCustomerPool,
+    switchCustomerPoolStatus,
+  } from '@/api/modules';
   import useModal from '@/hooks/useModal';
 
   import { AppRouteEnum } from '@/enums/routeEnum';
@@ -136,6 +143,30 @@
     });
   }
 
+  const manualRecycleLoading = ref(false);
+
+  async function handleManualRecycle(row: CluePoolItem) {
+    openModal({
+      type: 'default',
+      title: t('module.customer.manualRecycle'),
+      content: t('module.customer.manualRecycleConfirm', { name: row.name }),
+      positiveText: t('common.confirm'),
+      negativeText: t('common.cancel'),
+      onPositiveClick: async () => {
+        try {
+          manualRecycleLoading.value = true;
+          const res = await manualRecycleCustomerPool(row.id);
+          Message.success(t('module.customer.manualRecycleSuccess', { count: res.count }));
+          tableRefreshId.value += 1;
+        } catch (error) {
+          Message.error(t('module.customer.manualRecycleFailed'));
+        } finally {
+          manualRecycleLoading.value = false;
+        }
+      },
+    });
+  }
+
   function handleActionSelect(row: CluePoolItem, actionKey: string) {
     switch (actionKey) {
       case 'edit':
@@ -143,6 +174,9 @@
         break;
       case 'delete':
         handleDelete(row);
+        break;
+      case 'manualRecycle':
+        handleManualRecycle(row);
         break;
       default:
         break;
@@ -290,7 +324,7 @@
     },
     {
       key: 'operation',
-      width: 120,
+      width: 180,
       fixed: 'right',
       render: (row: CluePoolItem) =>
         h(CrmOperationButton, {
@@ -302,6 +336,10 @@
             {
               label: t('common.delete'),
               key: 'delete',
+            },
+            {
+              label: t('module.customer.manualRecycle'),
+              key: 'manualRecycle',
             },
           ],
           onSelect: (key: string) => handleActionSelect(row, key),

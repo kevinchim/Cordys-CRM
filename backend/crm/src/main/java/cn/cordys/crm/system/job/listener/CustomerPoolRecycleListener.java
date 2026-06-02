@@ -3,6 +3,7 @@ package cn.cordys.crm.system.job.listener;
 import cn.cordys.common.constants.InternalUser;
 import cn.cordys.crm.customer.domain.Customer;
 import cn.cordys.crm.customer.domain.CustomerPool;
+import cn.cordys.crm.customer.domain.CustomerPoolDailyViewRecord;
 import cn.cordys.crm.customer.domain.CustomerPoolRecycleRule;
 import cn.cordys.crm.customer.mapper.ExtCustomerMapper;
 import cn.cordys.crm.customer.service.CustomerContactService;
@@ -55,6 +56,8 @@ public class CustomerPoolRecycleListener implements ApplicationListener<ExecuteE
     private CommonNoticeSendService commonNoticeSendService;
     @Resource
     private CustomerContactService customerContactService;
+    @Resource
+    private BaseMapper<CustomerPoolDailyViewRecord> dailyViewRecordMapper;
 
 
     @Override
@@ -101,6 +104,9 @@ public class CustomerPoolRecycleListener implements ApplicationListener<ExecuteE
 
         // 执行回收操作
         recycleCustomers(customers, ownersDefaultPoolMap, recycleRuleMap);
+
+        // 清理30天前的每日查看记录
+        cleanOldDailyViewRecords();
 
         log.info("客户资源回收完成");
     }
@@ -199,5 +205,66 @@ public class CustomerPoolRecycleListener implements ApplicationListener<ExecuteE
 
         // 回收客户至公海
         extCustomerMapper.moveToPool(customer);
+    }
+
+    /**
+     * 手动回收指定公海的客户
+     *
+     * @param poolId 公海ID
+     * @return 回收的客户数量
+     */
+    public int recycleByPoolId(String poolId) {
+        LambdaQueryWrapper<CustomerPool> poolWrapper = new LambdaQueryWrapper<>();
+        poolWrapper.eq(CustomerPool::getId, poolId);
+        List<CustomerPool> pools = customerPoolMapper.selectListByLambda(poolWrapper);
+        if (CollectionUtils.isEmpty(pools) || !Boolean.TRUE.equals(pools.get(0).getEnable())) {
+            log.warn("手动回收失败：公海不存在或已禁用, poolId={}", poolId);
+            return 0;
+        }
+        CustomerPool pool = pools.get(0);
+
+        LambdaQueryWrapper<CustomerPoolRecycleRule> ruleWrapper = new LambdaQueryWrapper<>();
+        ruleWrapper.eq(CustomerPoolRecycleRule::getPoolId, poolId);
+        List<CustomerPoolRecycleRule> rules = customerPoolRecycleRuleMapper.selectListByLambda(ruleWrapper);
+        if (CollectionUtils.isEmpty(rules)) {
+            log.info("手动回收：公海没有回收规则, poolId={}", poolId);
+            return 0;
+        }
+        CustomerPoolRecycleRule rule = rules.get(0);
+
+        Map<List<String>, CustomerPool> ownersMap = customerPoolService.getOwnersBestMatchPoolMap(List.of(pool));
+        List<String> ownerIds = ownersMap.keySet().stream().flatMap(List::stream).toList();
+        if (CollectionUtils.isEmpty(ownerIds)) {
+            log.info("手动回收：公海没有负责人, poolId={}", poolId);
+            return 0;
+        }
+
+        List<Customer> customers = getCustomersForRecycle(ownerIds);
+        if (CollectionUtils.isEmpty(customers)) {
+            log.info("手动回收：没有需要回收的客户, poolId={}", poolId);
+            return 0;
+        }
+
+        int[] count = {0};
+        customers.forEach(customer -> ownersMap.forEach((oIds, p) -> {
+            if (oIds.contains(customer.getOwner())) {
+                if (customerPoolService.checkRecycled(customer, rule)) {
+                    processCustomerRecycle(customer, p);
+                    count[0]++;
+                }
+            }
+        }));
+        log.info("手动回收完成：poolId={}, 回收客户数={}", poolId, count[0]);
+        return count[0];
+    }
+
+    /**
+     * 清理30天前的每日查看记录
+     */
+    private void cleanOldDailyViewRecords() {
+        long thirtyDaysAgo = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000;
+        LambdaQueryWrapper<CustomerPoolDailyViewRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.lt(CustomerPoolDailyViewRecord::getViewTime, thirtyDaysAgo);
+        dailyViewRecordMapper.deleteByLambda(wrapper);
     }
 }

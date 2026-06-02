@@ -629,6 +629,12 @@
         update contract set pos = pos + #{pos} where pos &gt; #{end} and stage = #{stage}
     </update>
 
+    <select id="selectApprovedByCustomerId" resultType="cn.cordys.crm.contract.domain.Contract">
+        select * from contract
+        where customer_id = #{customerId}
+        and approval_status = 'APPROVED'
+    </select>
+
     <update id="moveDownStageContract">
         update contract set pos = pos + #{pos} where pos &gt;= #{end} and stage = #{stage}
     </update>

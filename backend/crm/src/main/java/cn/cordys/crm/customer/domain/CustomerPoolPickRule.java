@@ -29,4 +29,22 @@ public class CustomerPoolPickRule extends BaseModel {
 
     @Schema(description = "新数据领取间隔")
     private Integer newPickInterval;
+
+    @Schema(description = "是否限制每日可看")
+    private Boolean limitDailyView = false;
+
+    @Schema(description = "每日可看数量上限")
+    private Integer dailyViewCount = 0;
+
+    @Schema(description = "是否限制每月可看")
+    private Boolean limitMonthlyView = false;
+
+    @Schema(description = "每月可看数量上限")
+    private Integer monthlyViewCount = 0;
+
+    @Schema(description = "是否限制每月领取")
+    private Boolean limitMonthlyPick = false;
+
+    @Schema(description = "每月领取数量上限")
+    private Integer monthlyPickCount = 0;
 }

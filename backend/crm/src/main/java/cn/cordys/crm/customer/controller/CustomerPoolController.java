@@ -9,6 +9,7 @@ import cn.cordys.crm.customer.dto.CustomerPoolDTO;
 import cn.cordys.crm.customer.dto.request.CustomerPoolAddRequest;
 import cn.cordys.crm.customer.dto.request.CustomerPoolUpdateRequest;
 import cn.cordys.crm.customer.service.CustomerPoolService;
+import cn.cordys.crm.system.job.listener.CustomerPoolRecycleListener;
 import cn.cordys.security.SessionUtils;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
@@ -20,6 +21,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/account-pool")
@@ -28,6 +30,9 @@ public class CustomerPoolController {
 
     @Resource
     private CustomerPoolService customerPoolService;
+
+    @Resource
+    private CustomerPoolRecycleListener customerPoolRecycleListener;
 
     @PostMapping("/page")
     @Operation(summary = "分页获取公海池")
@@ -76,5 +81,13 @@ public class CustomerPoolController {
     @RequiresPermissions(value = {PermissionConstants.MODULE_SETTING_UPDATE})
     public void switchStatus(@PathVariable String id) {
         customerPoolService.switchStatus(id, SessionUtils.getUserId());
+    }
+
+    @PostMapping("/manual-recycle/{id}")
+    @Operation(summary = "手动回收客户")
+    @RequiresPermissions(value = {PermissionConstants.MODULE_SETTING_UPDATE})
+    public Map<String, Integer> manualRecycle(@PathVariable String id) {
+        int count = customerPoolRecycleListener.recycleByPoolId(id);
+        return Map.of("count", count);
     }
 }

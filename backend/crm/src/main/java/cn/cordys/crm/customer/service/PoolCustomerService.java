@@ -13,6 +13,7 @@ import cn.cordys.common.dto.DeptDataPermissionDTO;
 import cn.cordys.common.dto.chart.ChartResult;
 import cn.cordys.common.exception.GenericException;
 import cn.cordys.common.service.BaseChartService;
+import cn.cordys.common.uid.IDGenerator;
 import cn.cordys.common.util.*;
 import cn.cordys.common.utils.ConditionFilterUtils;
 import cn.cordys.crm.customer.domain.*;
@@ -25,6 +26,8 @@ import cn.cordys.crm.customer.dto.request.PoolCustomerPickRequest;
 import cn.cordys.crm.customer.mapper.ExtCustomerCapacityMapper;
 import cn.cordys.crm.customer.mapper.ExtCustomerMapper;
 import cn.cordys.crm.customer.mapper.ExtCustomerOwnerMapper;
+import cn.cordys.crm.customer.mapper.ExtCustomerPoolDailyViewRecordMapper;
+import cn.cordys.crm.customer.mapper.ExtCustomerPoolViewAllocationMapper;
 import cn.cordys.crm.system.constants.NotificationConstants;
 import cn.cordys.crm.system.domain.User;
 import cn.cordys.crm.system.dto.FilterConditionDTO;
@@ -44,13 +47,16 @@ import jakarta.annotation.Resource;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -92,6 +98,21 @@ public class PoolCustomerService {
     private BaseChartService baseChartService;
     @Resource
     private ExtCustomerOwnerMapper extCustomerOwnerMapper;
+    @Resource
+    private BaseMapper<CustomerPoolDailyViewRecord> dailyViewRecordMapper;
+    @Resource
+    private ExtCustomerPoolDailyViewRecordMapper extDailyViewRecordMapper;
+    @Resource
+    private ExtCustomerPoolViewAllocationMapper extAllocationMapper;
+    @Resource
+    private BaseMapper<CustomerPoolViewAllocation> allocationMapper;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    private static final long MONTHLY_KEY_TTL = 62;
+
+    public static final String PERIOD_DAILY = "DAILY";
+    public static final String PERIOD_MONTHLY = "MONTHLY";
 
     /**
      * 获取当前用户公海选项
@@ -201,6 +222,7 @@ public class PoolCustomerService {
         boolean poolAdmin = userExtendService.isPoolAdmin(JSON.parseArray(pool.getOwnerId(), String.class), currentUser, currentOrgId);
         if (!poolAdmin) {
             validateDailyPickNum(1, currentUser, pickRule);
+            validateAndRecordMonthlyPick(request.getPoolId(), currentUser, 1, pickRule);
         }
         ownCustomer(request.getCustomerId(), currentUser, pickRule, currentUser, LogType.PICK, currentOrgId, poolAdmin);
     }
@@ -249,6 +271,7 @@ public class PoolCustomerService {
         boolean poolAdmin = userExtendService.isPoolAdmin(JSON.parseArray(pool.getOwnerId(), String.class), currentUser, currentOrgId);
         if (!poolAdmin) {
             validateDailyPickNum(request.getBatchIds().size(), currentUser, pickRule);
+            validateAndRecordMonthlyPick(request.getPoolId(), currentUser, request.getBatchIds().size(), pickRule);
         }
         request.getBatchIds().forEach(id -> ownCustomer(id, currentUser, pickRule, currentUser, LogType.PICK, currentOrgId, poolAdmin));
     }
@@ -314,6 +337,69 @@ public class PoolCustomerService {
     }
 
     /**
+     * 校验每日可看数量
+     *
+     * @param poolId   公海池ID
+     * @param userId   用户ID
+     * @param pickRule 领取规则
+     */
+    public void validateDailyViewNum(String poolId, String userId, CustomerPoolPickRule pickRule) {
+        if (pickRule.getLimitDailyView() != null && pickRule.getLimitDailyView() && pickRule.getDailyViewCount() != null && pickRule.getDailyViewCount() > 0) {
+            long todayStart = TimeUtils.getTodayStart();
+            int viewedCount = extDailyViewRecordMapper.countTodayViews(poolId, userId, todayStart, todayStart + DAY_MILLIS);
+            if (viewedCount >= pickRule.getDailyViewCount()) {
+                throw new GenericException(Translator.get("customer.daily.view.over"));
+            }
+        }
+    }
+
+    /**
+     * 校验并记录每日查看（公海客户详情查看时调用）
+     *
+     * @param customerId 客户ID
+     * @param userId     用户ID
+     * @param orgId      组织ID
+     */
+    public void validateAndRecordDailyView(String customerId, String userId, String orgId) {
+        Customer customer = customerMapper.selectByPrimaryKey(customerId);
+        if (customer == null || customer.getPoolId() == null) {
+            return;
+        }
+        LambdaQueryWrapper<CustomerPoolPickRule> pickRuleWrapper = new LambdaQueryWrapper<>();
+        pickRuleWrapper.eq(CustomerPoolPickRule::getPoolId, customer.getPoolId());
+        List<CustomerPoolPickRule> pickRules = pickRuleMapper.selectListByLambda(pickRuleWrapper);
+        if (CollectionUtils.isEmpty(pickRules)) {
+            return;
+        }
+        CustomerPoolPickRule pickRule = pickRules.getFirst();
+        validateDailyViewNum(customer.getPoolId(), userId, pickRule);
+        recordDailyView(customer.getPoolId(), customerId, userId, orgId);
+    }
+
+    /**
+     * 记录每日查看
+     *
+     * @param poolId     公海池ID
+     * @param customerId 客户ID
+     * @param userId     用户ID
+     * @param orgId      组织ID
+     */
+    private void recordDailyView(String poolId, String customerId, String userId, String orgId) {
+        CustomerPoolDailyViewRecord record = new CustomerPoolDailyViewRecord();
+        record.setId(IDGenerator.nextStr());
+        record.setPoolId(poolId);
+        record.setCustomerId(customerId);
+        record.setUserId(userId);
+        record.setViewTime(System.currentTimeMillis());
+        record.setCreateTime(System.currentTimeMillis());
+        record.setUpdateTime(System.currentTimeMillis());
+        record.setCreateUser(userId);
+        record.setUpdateUser(userId);
+        record.setOrganizationId(orgId);
+        dailyViewRecordMapper.insert(record);
+    }
+
+    /**
      * 校验每日领取数量
      *
      * @param pickingCount 领取数量
@@ -332,6 +418,210 @@ public class PoolCustomerService {
             if (pickingCount + pickedCount > pickRule.getPickNumber()) {
                 throw new GenericException(Translator.get("customer.daily.pick.over"));
             }
+        }
+    }
+
+    /**
+     * 校验并记录每月可看（公海列表查询时调用）
+     */
+    public void validateAndRecordMonthlyView(String poolId, String userId, int viewCount, CustomerPoolPickRule pickRule) {
+        if (pickRule.getLimitMonthlyView() != null && pickRule.getLimitMonthlyView()
+                && pickRule.getMonthlyViewCount() != null && pickRule.getMonthlyViewCount() > 0) {
+            String key = getMonthlyViewKey(poolId, userId);
+            Long current = stringRedisTemplate.opsForValue().increment(key, viewCount);
+            if (current != null) {
+                stringRedisTemplate.expire(key, MONTHLY_KEY_TTL, TimeUnit.DAYS);
+            }
+            if (current != null && current > pickRule.getMonthlyViewCount()) {
+                stringRedisTemplate.opsForValue().decrement(key, viewCount);
+                throw new GenericException(Translator.get("customer.monthly.view.over"));
+            }
+        }
+    }
+
+    /**
+     * 校验并记录每月领取（领取客户时调用）
+     */
+    public void validateAndRecordMonthlyPick(String poolId, String userId, int pickCount, CustomerPoolPickRule pickRule) {
+        if (pickRule.getLimitMonthlyPick() != null && pickRule.getLimitMonthlyPick()
+                && pickRule.getMonthlyPickCount() != null && pickRule.getMonthlyPickCount() > 0) {
+            String key = getMonthlyPickKey(poolId, userId);
+            Long current = stringRedisTemplate.opsForValue().increment(key, pickCount);
+            if (current != null) {
+                stringRedisTemplate.expire(key, MONTHLY_KEY_TTL, TimeUnit.DAYS);
+            }
+            if (current != null && current > pickRule.getMonthlyPickCount()) {
+                stringRedisTemplate.opsForValue().decrement(key, pickCount);
+                throw new GenericException(Translator.get("customer.monthly.pick.over"));
+            }
+        }
+    }
+
+    private String getMonthlyViewKey(String poolId, String userId) {
+        return "pool:monthly:view:" + poolId + ":" + userId + ":" + YearMonth.now();
+    }
+
+    private String getMonthlyPickKey(String poolId, String userId) {
+        return "pool:monthly:pick:" + poolId + ":" + userId + ":" + YearMonth.now();
+    }
+
+    /**
+     * 获取公海领取规则
+     */
+    public CustomerPoolPickRule getPoolPickRule(String poolId) {
+        if (poolId == null) {
+            return null;
+        }
+        LambdaQueryWrapper<CustomerPoolPickRule> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CustomerPoolPickRule::getPoolId, poolId);
+        List<CustomerPoolPickRule> rules = pickRuleMapper.selectListByLambda(wrapper);
+        return CollectionUtils.isEmpty(rules) ? null : rules.getFirst();
+    }
+
+    /**
+     * 根据互斥规则确定生效的周期类型
+     * 每日优先，如果两个都配置了优先使用每日
+     */
+    public String determinePeriodType(CustomerPoolPickRule pickRule) {
+        if (pickRule == null) {
+            return null;
+        }
+        boolean dailyEnabled = pickRule.getLimitDailyView() != null && pickRule.getLimitDailyView()
+                && pickRule.getDailyViewCount() != null && pickRule.getDailyViewCount() > 0;
+        boolean monthlyEnabled = pickRule.getLimitMonthlyView() != null && pickRule.getLimitMonthlyView()
+                && pickRule.getMonthlyViewCount() != null && pickRule.getMonthlyViewCount() > 0;
+        if (dailyEnabled) {
+            return PERIOD_DAILY;
+        }
+        if (monthlyEnabled) {
+            return PERIOD_MONTHLY;
+        }
+        return null;
+    }
+
+    /**
+     * 获取当期周期key
+     */
+    public String getPeriodKey(String periodType) {
+        DateTimeFormatter dtf;
+        if (PERIOD_DAILY.equals(periodType)) {
+            dtf = DateTimeFormatter.ofPattern("yyyyMMdd");
+        } else {
+            dtf = DateTimeFormatter.ofPattern("yyyyMM");
+        }
+        return LocalDateTime.now().format(dtf);
+    }
+
+    /**
+     * 获取该周期可查看的客户ID数量限制
+     */
+    public int getViewLimit(CustomerPoolPickRule pickRule, String periodType) {
+        if (PERIOD_DAILY.equals(periodType)) {
+            return pickRule.getDailyViewCount();
+        }
+        return pickRule.getMonthlyViewCount();
+    }
+
+    /**
+     * 获取或创建用户当期分配 - 列表查询时调用
+     *
+     * @return 已分配的客户ID列表，null表示无需限制
+     */
+    public List<String> getOrAllocateCustomerIds(String poolId, String userId, CustomerPoolPickRule pickRule, String orgId) {
+        String periodType = determinePeriodType(pickRule);
+        if (periodType == null) {
+            return null;
+        }
+        String periodKey = getPeriodKey(periodType);
+
+        // 检查是否已有当期分配
+        List<String> existingIds = extAllocationMapper.selectAllocatedCustomerIds(poolId, userId, periodType, periodKey);
+        if (CollectionUtils.isNotEmpty(existingIds)) {
+            return existingIds;
+        }
+
+        // 无分配，创建新分配
+        int limit = getViewLimit(pickRule, periodType);
+        List<String> customerIds = allocateCustomers(poolId, userId, limit, periodType, periodKey, orgId);
+        return customerIds;
+    }
+
+    /**
+     * 随机分配客户
+     */
+    private List<String> allocateCustomers(String poolId, String userId, int limit, String periodType, String periodKey, String orgId) {
+        // 获取公海成员ID（已领取的客户会被排除）
+        CustomerPool pool = poolMapper.selectByPrimaryKey(poolId);
+        if (pool == null) {
+            return List.of();
+        }
+        List<String> ownerIds = userExtendService.getScopeOwnerIds(
+                JSON.parseArray(pool.getOwnerId(), String.class), pool.getOrganizationId());
+
+        // 获取池中未被分配给他人的客户ID（优先分配未分配过的）
+        List<String> candidateIds = extAllocationMapper.selectCustomerIdsExcludeAllocated(
+                poolId, periodType, periodKey, ownerIds);
+
+        // 如果可用客户不够，从已分配的客户中也纳入一些（随机性保证不同用户看到不同客户）
+        if (candidateIds.size() < limit) {
+            // 如果全部池客户不够limit，取全部
+            LambdaQueryWrapper<Customer> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Customer::getPoolId, poolId).eq(Customer::getInSharedPool, true);
+            List<Customer> allCustomers = customerMapper.selectListByLambda(wrapper);
+            candidateIds = allCustomers.stream().map(Customer::getId).collect(Collectors.toList());
+        }
+
+        // 随机打乱取前limit个
+        Collections.shuffle(candidateIds);
+        List<String> selected = candidateIds.stream().limit(limit).toList();
+
+        // 批量插入分配记录
+        long now = System.currentTimeMillis();
+        selected.forEach(cid -> {
+            CustomerPoolViewAllocation allocation = new CustomerPoolViewAllocation();
+            allocation.setId(IDGenerator.nextStr());
+            allocation.setPoolId(poolId);
+            allocation.setUserId(userId);
+            allocation.setCustomerId(cid);
+            allocation.setPeriodType(periodType);
+            allocation.setPeriodKey(periodKey);
+            allocation.setCreateTime(now);
+            allocation.setUpdateTime(now);
+            allocation.setCreateUser(userId);
+            allocation.setUpdateUser(userId);
+            allocation.setOrganizationId(orgId);
+            allocationMapper.insert(allocation);
+        });
+
+        return selected;
+    }
+
+    /**
+     * 获取当期已分配的客户数量（用于前端展示）
+     */
+    public int getAllocatedCount(String poolId, String userId, CustomerPoolPickRule pickRule) {
+        String periodType = determinePeriodType(pickRule);
+        if (periodType == null) {
+            return 0;
+        }
+        String periodKey = getPeriodKey(periodType);
+        List<String> ids = extAllocationMapper.selectAllocatedCustomerIds(poolId, userId, periodType, periodKey);
+        return ids.size();
+    }
+
+    /**
+     * 校验每日/每月互斥规则 - 保存时调用
+     */
+    public void validateViewLimitMutualExclusion(CustomerPoolPickRuleDTO pickRule) {
+        if (pickRule == null) {
+            return;
+        }
+        boolean dailyEnabled = pickRule.getLimitDailyView() != null && pickRule.getLimitDailyView()
+                && pickRule.getDailyViewCount() != null && pickRule.getDailyViewCount() > 0;
+        boolean monthlyEnabled = pickRule.getLimitMonthlyView() != null && pickRule.getLimitMonthlyView()
+                && pickRule.getMonthlyViewCount() != null && pickRule.getMonthlyViewCount() > 0;
+        if (dailyEnabled && monthlyEnabled) {
+            throw new GenericException(Translator.get("customer.view.limit.mutual.exclusion"));
         }
     }
 

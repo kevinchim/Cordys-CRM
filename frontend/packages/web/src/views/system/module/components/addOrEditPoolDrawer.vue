@@ -147,6 +147,84 @@
           />
           <div class="flex flex-nowrap"> {{ t('module.clue.receiveDay') }}</div>
         </n-form-item>
+        <n-form-item path="pickRule.limitDailyView" :label="t('module.clue.dailyViewLimit')">
+          <n-radio-group v-model:value="form.pickRule.limitDailyView" name="radiogroup">
+            <n-space>
+              <n-radio :value="false">
+                {{ t('module.clue.noLimit') }}
+              </n-radio>
+              <n-radio :value="true">
+                {{ t('module.clue.limit') }}
+              </n-radio>
+            </n-space>
+          </n-radio-group>
+        </n-form-item>
+        <n-form-item
+          v-if="form.pickRule.limitDailyView"
+          path="pickRule.dailyViewCount"
+          :label="t('module.clue.dailyViewCount')"
+        >
+          <CrmInputNumber
+            v-model:value="form.pickRule.dailyViewCount"
+            class="crm-reminder-advance-input"
+            :placeholder="t('common.pleaseInput')"
+            min="1"
+            max="10000"
+            :precision="0"
+          />
+        </n-form-item>
+        <n-form-item path="pickRule.limitMonthlyView" :label="t('module.clue.monthlyViewLimit')">
+          <n-radio-group v-model:value="form.pickRule.limitMonthlyView" name="radiogroup">
+            <n-space>
+              <n-radio :value="false">
+                {{ t('module.clue.noLimit') }}
+              </n-radio>
+              <n-radio :value="true">
+                {{ t('module.clue.limit') }}
+              </n-radio>
+            </n-space>
+          </n-radio-group>
+        </n-form-item>
+        <n-form-item
+          v-if="form.pickRule.limitMonthlyView"
+          path="pickRule.monthlyViewCount"
+          :label="t('module.clue.monthlyViewCount')"
+        >
+          <CrmInputNumber
+            v-model:value="form.pickRule.monthlyViewCount"
+            class="crm-reminder-advance-input"
+            :placeholder="t('common.pleaseInput')"
+            min="1"
+            max="100000"
+            :precision="0"
+          />
+        </n-form-item>
+        <n-form-item path="pickRule.limitMonthlyPick" :label="t('module.clue.monthlyPickLimit')">
+          <n-radio-group v-model:value="form.pickRule.limitMonthlyPick" name="radiogroup">
+            <n-space>
+              <n-radio :value="false">
+                {{ t('module.clue.noLimit') }}
+              </n-radio>
+              <n-radio :value="true">
+                {{ t('module.clue.limit') }}
+              </n-radio>
+            </n-space>
+          </n-radio-group>
+        </n-form-item>
+        <n-form-item
+          v-if="form.pickRule.limitMonthlyPick"
+          path="pickRule.monthlyPickCount"
+          :label="t('module.clue.monthlyPickCount')"
+        >
+          <CrmInputNumber
+            v-model:value="form.pickRule.monthlyPickCount"
+            class="crm-reminder-advance-input"
+            :placeholder="t('common.pleaseInput')"
+            min="1"
+            max="100000"
+            :precision="0"
+          />
+        </n-form-item>
         <div class="crm-module-form-title">
           {{
             props.type === ModuleConfigEnum.CLUE_MANAGEMENT
@@ -173,6 +251,33 @@
           keep-one-line
           :config-list="filterConfigList"
         />
+        <template v-if="form.auto">
+          <n-form-item :label="t('module.clue.contractStartTime')">
+            <n-switch v-model:value="contractStartTimeEnabled" />
+          </n-form-item>
+          <template v-if="contractStartTimeEnabled">
+            <n-form-item :label="t('module.clue.contractDays')">
+              <CrmInputNumber
+                v-model:value="contractStartTimeDays"
+                class="crm-reminder-advance-input"
+                :placeholder="t('common.pleaseInput')"
+                min="0"
+                max="10000"
+                :precision="0"
+              />
+            </n-form-item>
+            <n-form-item :label="t('module.clue.noContractDays')">
+              <CrmInputNumber
+                v-model:value="noContractStartTimeDays"
+                class="crm-reminder-advance-input"
+                :placeholder="t('common.pleaseInput')"
+                min="0"
+                max="10000"
+                :precision="0"
+              />
+            </n-form-item>
+          </template>
+        </template>
         <div class="crm-module-form-title mt-[24px]">
           {{ t('module.clue.columnsSetting') }}
         </div>
@@ -205,6 +310,7 @@
     NRadioGroup,
     NScrollbar,
     NSpace,
+    NSwitch,
     NTooltip,
     useMessage,
   } from 'naive-ui';
@@ -286,6 +392,15 @@
     [`pickRule.newPickInterval`]: [
       { required: true, type: 'number', message: t('common.pleaseInput'), trigger: ['input', 'blur'] },
     ],
+    [`pickRule.dailyViewCount`]: [
+      { required: true, type: 'number', message: t('common.pleaseInput'), trigger: ['input', 'blur'] },
+    ],
+    [`pickRule.monthlyViewCount`]: [
+      { required: true, type: 'number', message: t('common.pleaseInput'), trigger: ['input', 'blur'] },
+    ],
+    [`pickRule.monthlyPickCount`]: [
+      { required: true, type: 'number', message: t('common.pleaseInput'), trigger: ['input', 'blur'] },
+    ],
   };
 
   const initForm: CluePoolForm = {
@@ -301,6 +416,12 @@
       pickIntervalDays: undefined,
       limitNew: false,
       newPickInterval: undefined,
+      limitDailyView: false,
+      dailyViewCount: undefined,
+      limitMonthlyView: false,
+      monthlyViewCount: undefined,
+      limitMonthlyPick: false,
+      monthlyPickCount: undefined,
     },
     recycleRule: {
       operator: 'all',
@@ -310,6 +431,23 @@
   };
   const showFieldIds = ref<string[]>([]);
   const form = ref<CluePoolForm>(cloneDeep(initForm));
+  const contractStartTimeEnabled = ref(false);
+  const contractStartTimeDays = ref<number | undefined>(undefined);
+  const noContractStartTimeDays = ref<number | undefined>(undefined);
+
+  // 每日/每月可看互斥：开启一个时自动关闭另一个
+  watch(() => form.value.pickRule.limitDailyView, (val) => {
+    if (val && form.value.pickRule.limitMonthlyView) {
+      form.value.pickRule.limitMonthlyView = false;
+      form.value.pickRule.monthlyViewCount = undefined;
+    }
+  });
+  watch(() => form.value.pickRule.limitMonthlyView, (val) => {
+    if (val && form.value.pickRule.limitDailyView) {
+      form.value.pickRule.limitDailyView = false;
+      form.value.pickRule.dailyViewCount = undefined;
+    }
+  });
 
   const defaultFormModel: FilterForm = {
     searchMode: 'AND',
@@ -356,6 +494,9 @@
   function cancelHandler() {
     form.value = cloneDeep(initForm);
     recycleFormItemModel.value = cloneDeep(defaultFormModel);
+    contractStartTimeEnabled.value = false;
+    contractStartTimeDays.value = undefined;
+    noContractStartTimeDays.value = undefined;
     visible.value = false;
   }
 
@@ -365,6 +506,16 @@
   async function handleSave(isContinue: boolean) {
     try {
       loading.value = true;
+
+      // 每日/每月可看互斥校验
+      const dailyEnabled = form.value.pickRule.limitDailyView && (form.value.pickRule.dailyViewCount ?? 0) > 0;
+      const monthlyEnabled = form.value.pickRule.limitMonthlyView && (form.value.pickRule.monthlyViewCount ?? 0) > 0;
+      if (dailyEnabled && monthlyEnabled) {
+        Message.warning(t('module.clue.viewLimitMutualExclusion'));
+        loading.value = false;
+        return;
+      }
+
       const { userIds, auto, adminIds, ...otherParams } = form.value;
 
       const params: CluePoolParams = {
@@ -390,6 +541,14 @@
             scope: item.scope,
           });
         });
+        if (contractStartTimeEnabled.value) {
+          conditions.push({
+            column: 'contractStartTime',
+            operator: 'DYNAMICS',
+            value: `${contractStartTimeDays.value ?? 0},${noContractStartTimeDays.value ?? 0}`,
+            scope: [],
+          });
+        }
         params.recycleRule.conditions = form.value.auto ? conditions : [];
       }
       if (form.value.id) {
@@ -406,6 +565,9 @@
       if (isContinue) {
         form.value = cloneDeep(initForm);
         recycleFormItemModel.value = cloneDeep(defaultFormModel);
+        contractStartTimeEnabled.value = false;
+        contractStartTimeDays.value = undefined;
+        noContractStartTimeDays.value = undefined;
       } else {
         cancelHandler();
       }
@@ -449,19 +611,37 @@
         hiddenFieldIds: val.fieldConfigs?.filter((item) => !item.enable).map((item) => item.fieldId) || [],
       };
       if (val.auto) {
+        const contractCondition = val.recycleRule.conditions?.find((item) => item.column === 'contractStartTime');
+        if (contractCondition) {
+          contractStartTimeEnabled.value = true;
+          const parts = (contractCondition.value || '0,0').split(',');
+          const cd = Number(parts[0]);
+          const ncd = Number(parts[1]);
+          contractStartTimeDays.value = Number.isNaN(cd) ? undefined : cd;
+          noContractStartTimeDays.value = Number.isNaN(ncd) ? undefined : ncd;
+        } else {
+          contractStartTimeEnabled.value = false;
+          contractStartTimeDays.value = undefined;
+          noContractStartTimeDays.value = undefined;
+        }
         recycleFormItemModel.value = {
-          list: val.recycleRule.conditions?.map((item) => ({
-            dataIndex: item.column,
-            operator: item.operator,
-            showScope: !!item.scope?.length,
-            value: item.value,
-            scope: item.scope,
-            type: FieldTypeEnum.TIME_RANGE_PICKER,
-          })) as FilterFormItem[],
+          list: val.recycleRule.conditions
+            ?.filter((item) => item.column !== 'contractStartTime')
+            .map((item) => ({
+              dataIndex: item.column,
+              operator: item.operator,
+              showScope: !!item.scope?.length,
+              value: item.value,
+              scope: item.scope,
+              type: FieldTypeEnum.TIME_RANGE_PICKER,
+            })) as FilterFormItem[],
           searchMode: val.recycleRule.operator as AccordBelowType,
         };
       } else {
         recycleFormItemModel.value = cloneDeep(defaultFormModel);
+        contractStartTimeEnabled.value = false;
+        contractStartTimeDays.value = undefined;
+        noContractStartTimeDays.value = undefined;
       }
     }
   });

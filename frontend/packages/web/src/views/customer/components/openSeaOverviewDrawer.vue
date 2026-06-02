@@ -25,7 +25,6 @@
           :column="layout === 'vertical' ? 3 : undefined"
           :label-width="layout === 'vertical' ? 'auto' : undefined"
           :value-align="layout === 'vertical' ? 'start' : undefined"
-          :readonly="!hasAnyPermission(['CUSTOMER_MANAGEMENT_POOL:UPDATE'])"
           @init="handleDescriptionInit"
         />
       </div>
@@ -77,7 +76,6 @@
   } from '@/api/modules';
   import useModal from '@/hooks/useModal';
   import useOpenNewPage from '@/hooks/useOpenNewPage';
-  import { hasAnyPermission } from '@/utils/permission';
 
   import { CustomerRouteEnum } from '@/enums/routeEnum';
 

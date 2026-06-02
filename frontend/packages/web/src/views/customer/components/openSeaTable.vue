@@ -39,6 +39,19 @@
         >
           {{ t('common.exportAll') }}
         </n-button>
+        <span
+          v-if="allocationInfo.limited"
+          class="rounded-[var(--border-radius-small)] bg-[var(--primary-9)] px-[8px] py-[2px] text-[12px] text-[var(--primary-6)]"
+        >
+          {{ allocationInfo.periodType === 'DAILY' ? t('module.clue.dailyViewLimit') : t('module.clue.monthlyViewLimit') }}:
+          {{ allocationInfo.allocated }}/{{ allocationInfo.limit }}
+          <span
+            v-if="!allocationInfo.insufficient"
+            class="ml-[4px] text-[var(--warning-6)]"
+          >
+            ({{ t('module.clue.viewAllocationHint', { allocated: allocationInfo.allocated, limit: allocationInfo.limit, insufficient: '' }) }})
+          </span>
+        </span>
       </div>
     </template>
     <template #actionRight>
@@ -73,7 +86,7 @@
     :row="openSeaRow"
     quick
     @refresh="init"
-    @saved="searchData(undefined, undefined, openSeaRow?.id)"
+    @saved="handlePoolSaved"
   />
   <openSeaOverviewDrawer
     v-model:show="showOverviewDrawer"
@@ -143,6 +156,7 @@
     batchDeleteOpenSeaCustomer,
     batchPickOpenSeaCustomer,
     deleteOpenSeaCustomer,
+    getAllocationInfo,
     getOpenSeaOptions,
     pickOpenSeaCustomer,
   } from '@/api/modules';
@@ -476,10 +490,34 @@
     }
   }
 
-  const hiddenColumns = computed<string[]>(() => {
-    const openSeaSetting = openSeaOptions.value.find((item) => item.id === openSea.value);
-    return openSeaSetting?.fieldConfigs.filter((item) => !item.enable).map((item) => item.fieldId) || [];
+  const selectedPool = computed(() => {
+    return openSeaOptions.value.find((item) => item.id === openSea.value);
   });
+
+  const hiddenColumns = computed<string[]>(() => {
+    return selectedPool.value?.fieldConfigs.filter((item) => !item.enable).map((item) => item.fieldId) || [];
+  });
+
+  const allocationInfo = ref<{
+    limited: boolean;
+    periodType?: string;
+    allocated?: number;
+    limit?: number;
+    insufficient?: boolean;
+  }>({ limited: false });
+
+  async function fetchAllocationInfo(poolId: string) {
+    if (!poolId) {
+      allocationInfo.value = { limited: false };
+      return;
+    }
+    try {
+      const res = await getAllocationInfo(poolId);
+      allocationInfo.value = res;
+    } catch {
+      allocationInfo.value = { limited: false };
+    }
+  }
 
   const handleAdvanceFilter = ref<null | ((...args: any[]) => void)>(null);
   const handleSearchData = ref<null | ((...args: any[]) => void)>(null);
@@ -543,7 +581,10 @@
   const { propsRes, propsEvent, tableQueryParams, loadList, setLoadListParams, setAdvanceFilter } = useTableRes;
   batchTableQueryParams.value = tableQueryParams.value;
   const filterColumns = computed(() => {
-    return propsRes.value.columns.filter((item) => !hiddenColumns.value.includes(item.key as string));
+    const contactFieldKeys = new Set(['phone', 'mobile', 'telephone', 'email', 'mail']);
+    return propsRes.value.columns.filter(
+      (item) => !hiddenColumns.value.includes(item.key as string) && !contactFieldKeys.has(item.key as string)
+    );
   });
 
   const exportParams = computed(() => {
@@ -653,6 +694,11 @@
     searchData();
   }
 
+  function handlePoolSaved() {
+    initOpenSeaOptions();
+    searchData(undefined, undefined, openSeaRow.value?.id);
+  }
+
   function removeItemFromList(id: string) {
     propsRes.value.data = propsRes.value.data.filter((item) => item.id !== id);
     propsRes.value.crmPagination = {
@@ -669,6 +715,12 @@
       }
     }
   );
+
+  watch(openSea, (val) => {
+    if (val) {
+      fetchAllocationInfo(String(val));
+    }
+  });
 
   onBeforeMount(() => {
     if (!props.hiddenPoolSelect) {

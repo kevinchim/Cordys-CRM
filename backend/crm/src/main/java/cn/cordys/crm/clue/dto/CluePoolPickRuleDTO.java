@@ -33,4 +33,22 @@ public class CluePoolPickRuleDTO {
 
     @Schema(description = "新数据领取间隔")
     private Integer newPickInterval;
+
+    @Schema(description = "是否限制每日可看")
+    private Boolean limitDailyView;
+
+    @Schema(description = "每日可看数量上限")
+    private Integer dailyViewCount;
+
+    @Schema(description = "是否限制每月可看")
+    private Boolean limitMonthlyView;
+
+    @Schema(description = "每月可看数量上限")
+    private Integer monthlyViewCount;
+
+    @Schema(description = "是否限制每月领取")
+    private Boolean limitMonthlyPick;
+
+    @Schema(description = "每月领取数量上限")
+    private Integer monthlyPickCount;
 }

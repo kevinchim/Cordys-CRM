@@ -199,6 +199,13 @@ public class CluePoolService {
 
         CluePoolPickRule pickRule = new CluePoolPickRule();
         BeanUtils.copyBean(pickRule, request.getPickRule());
+        // 设置自定义字段默认值（防止 null 值导致 SQL 错误）
+        if (pickRule.getLimitDailyView() == null) pickRule.setLimitDailyView(false);
+        if (pickRule.getDailyViewCount() == null) pickRule.setDailyViewCount(0);
+        if (pickRule.getLimitMonthlyView() == null) pickRule.setLimitMonthlyView(false);
+        if (pickRule.getMonthlyViewCount() == null) pickRule.setMonthlyViewCount(0);
+        if (pickRule.getLimitMonthlyPick() == null) pickRule.setLimitMonthlyPick(false);
+        if (pickRule.getMonthlyPickCount() == null) pickRule.setMonthlyPickCount(0);
         pickRule.setId(IDGenerator.nextStr());
         pickRule.setPoolId(pool.getId());
         pickRule.setCreateTime(System.currentTimeMillis());
@@ -255,6 +262,13 @@ public class CluePoolService {
 
         CluePoolPickRule pickRule = new CluePoolPickRule();
         BeanUtils.copyBean(pickRule, request.getPickRule());
+        // 设置自定义字段默认值（防止 null 值导致 SQL 错误）
+        if (pickRule.getLimitDailyView() == null) pickRule.setLimitDailyView(false);
+        if (pickRule.getDailyViewCount() == null) pickRule.setDailyViewCount(0);
+        if (pickRule.getLimitMonthlyView() == null) pickRule.setLimitMonthlyView(false);
+        if (pickRule.getMonthlyViewCount() == null) pickRule.setMonthlyViewCount(0);
+        if (pickRule.getLimitMonthlyPick() == null) pickRule.setLimitMonthlyPick(false);
+        if (pickRule.getMonthlyPickCount() == null) pickRule.setMonthlyPickCount(0);
         pickRule.setPoolId(pool.getId());
         pickRule.setUpdateTime(System.currentTimeMillis());
         pickRule.setUpdateUser(currentUserId);
@@ -459,8 +473,9 @@ public class CluePoolService {
      */
     public Map<List<String>, CluePool> getOwnersBestMatchPoolMap(List<CluePool> pools) {
         Map<List<String>, CluePool> poolMap = new HashMap<>(4);
-        pools.sort(Comparator.comparing(CluePool::getCreateTime).reversed());
-        for (CluePool pool : pools) {
+        List<CluePool> sortedPools = new ArrayList<>(pools);
+        sortedPools.sort(Comparator.comparing(CluePool::getCreateTime).reversed());
+        for (CluePool pool : sortedPools) {
             List<String> exitOwnerIds = poolMap.keySet().stream().flatMap(List::stream).toList();
             List<String> scopeIds = JSON.parseArray(pool.getScopeId(), String.class);
             List<String> ownerIds = userExtendService.getScopeOwnerIds(scopeIds, pool.getOrganizationId());

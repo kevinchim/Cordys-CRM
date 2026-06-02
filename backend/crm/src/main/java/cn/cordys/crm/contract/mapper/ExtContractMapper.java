@@ -37,6 +37,8 @@ public interface ExtContractMapper {
 
     ContractStatisticResponse searchStatistic(@Param("request") BaseCondition request, @Param("orgId") String orgId, @Param("userId") String userId, @Param("dataPermission") DeptDataPermissionDTO dataPermission);
 
+    List<Contract> selectApprovedByCustomerId(@Param("customerId") String customerId);
+
     int countByStage(@Param("stage") String stage);
 
     Long selectNextPos(@Param("orgId") String orgId, @Param("stage") String stage);
@@ -45,5 +47,5 @@ public interface ExtContractMapper {
 
     void moveDownStageContract(@Param("end") Long end, @Param("stage") String stage, @Param("pos") Long pos);
 
-	void updateOldApprovalStatusNone();
+    void updateOldApprovalStatusNone();
 }

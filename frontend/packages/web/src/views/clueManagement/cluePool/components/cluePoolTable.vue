@@ -611,6 +611,7 @@
   );
 
   function handleFormCreateSaved(res: any) {
+    getCluePoolOptions();
     if (cluePoolRow.value.id) {
       searchData(undefined, res.id);
     } else {
