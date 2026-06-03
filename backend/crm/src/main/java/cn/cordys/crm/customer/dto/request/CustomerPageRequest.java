@@ -26,4 +26,7 @@ public class CustomerPageRequest extends BasePageRequest {
 
 	@Schema(description = "关联客户数据权限")
 	private DeptDataPermissionDTO transitionDataPermission;
+
+	@Schema(description = "限定客户ID列表(查看限制分配)")
+	private List<String> customerIds;
 }
