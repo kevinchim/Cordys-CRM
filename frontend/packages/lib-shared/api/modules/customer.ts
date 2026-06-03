@@ -93,6 +93,7 @@ import {
   GetOpenSeaCustomerListUrl,
   GetOpenSeaCustomerUrl,
   GetOpenSeaOptionsUrl,
+  GetAllocationInfoUrl,
   ImportAccountUrl,
   ImportContactUrl,
   IsCustomerOpenSeaNoPickUrl,
@@ -456,6 +457,16 @@ export default function useProductApi(CDR: CordysAxios) {
   // 获取公海选项
   function getOpenSeaOptions() {
     return CDR.get<CluePoolItem[]>({ url: GetOpenSeaOptionsUrl });
+  }
+
+  function getAllocationInfo(poolId: string) {
+    return CDR.get<{
+      limited: boolean;
+      periodType?: string;
+      allocated?: number;
+      limit?: number;
+      insufficient?: boolean;
+    }>({ url: GetAllocationInfoUrl, params: { poolId } });
   }
 
   // 获取公海客户详情
@@ -854,6 +865,7 @@ export default function useProductApi(CDR: CordysAxios) {
     batchAssignOpenSeaCustomer,
     assignOpenSeaCustomer,
     getOpenSeaOptions,
+    getAllocationInfo,
     getOpenSeaCustomer,
     deleteOpenSeaCustomer,
     getCustomerHeaderList,

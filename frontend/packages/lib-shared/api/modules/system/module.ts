@@ -44,6 +44,7 @@ import {
   ModuleUserDeptTreeUrl,
   NoPickCluePoolUrl,
   NoPickCustomerPoolUrl,
+  ManualRecycleCustomerPoolUrl,
   PreviewAttachmentUrl,
   PreviewPictureUrl,
   QuickUpdateCluePoolUrl,
@@ -248,6 +249,10 @@ export default function useProductApi(CDR: CordysAxios) {
     return CDR.get({ url: `${NoPickCustomerPoolUrl}/${id}` });
   }
 
+  function manualRecycleCustomerPool(id: string) {
+    return CDR.post<{ count: number }>({ url: `${ManualRecycleCustomerPoolUrl}/${id}` });
+  }
+
   // 表单设计
   function saveFormDesignConfig(data: SaveFormDesignConfigParams) {
     return CDR.post({ url: SaveFormDesignConfigUrl, data });
@@ -443,6 +448,7 @@ export default function useProductApi(CDR: CordysAxios) {
     switchCustomerPoolStatus,
     deleteCustomerPool,
     noPickCustomerPool,
+    manualRecycleCustomerPool,
     saveFormDesignConfig,
     getFormDesignConfig,
     getFieldDeptUerTree,

@@ -177,6 +177,14 @@ export interface PickRule {
   pickNumber: number; // 领取数量
   limitPreOwner: boolean; // 是否限制前归属人领取
   pickIntervalDays: number; // 领取间隔天数
+  limitNew: boolean; // 是否限制新数据领取
+  newPickInterval?: number; // 新数据领取间隔天数
+  limitDailyView: boolean; // 是否限制每日可看
+  dailyViewCount?: number; // 每日可看数量上限
+  limitMonthlyView: boolean; // 是否限制每月可看
+  monthlyViewCount?: number; // 每月可看数量上限
+  limitMonthlyPick: boolean; // 是否限制每月领取
+  monthlyPickCount?: number; // 每月领取数量上限
 }
 
 export interface SaveCustomerOpenSeaParams {

@@ -43,6 +43,7 @@ export const QuickUpdateCustomerPoolUrl = '/account-pool/quick-update'; // 快�
 export const SwitchCustomerPoolStatusUrl = '/account-pool/switch'; // 启用/禁用公海池
 export const DeleteCustomerPoolUrl = '/account-pool/delete'; // 删除公海池
 export const NoPickCustomerPoolUrl = '/account-pool/no-pick'; // 未领取线索
+export const ManualRecycleCustomerPoolUrl = '/account-pool/manual-recycle'; // 手动回收客户
 
 // 模块-表单设计
 export const GetFormDesignConfigUrl = '/module/form/config'; // 获取表单设计配置
