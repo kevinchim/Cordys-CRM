@@ -576,6 +576,10 @@ export const {
   testConfigSynchronization,
   updateConfigSynchronization,
   getTenderConfig,
+  getWelltransConfig,
+  saveWelltransConfig,
+  executeWelltransPush,
+  getWelltransPushLogs,
 } = businessApi;
 
 export const {

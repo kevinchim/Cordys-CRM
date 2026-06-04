@@ -41,6 +41,7 @@ export default {
     'menu.settings.approvalFlow': '审批流',
     'menu.settings.workflowSetting': '工作流',
     'menu.settings.log': '系统日志',
+    'menu.settings.welltransPush': 'Welltrans CRM API 推送',
     'navbar.action.locale': '切换为中文',
     ...sys,
     ...localeSettings,

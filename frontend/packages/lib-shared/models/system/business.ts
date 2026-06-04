@@ -287,6 +287,38 @@ interface FileParamItem extends ParamItem {
 // 页面配置返回参数
 export type PageConfigReturns = FileParamItem[];
 
+// Welltrans CRM API 推送配置
+export interface WelltransPushConfig {
+  apiUrl: string;
+  apiKey: string;
+  autoPushEnabled: boolean;
+  manualPushEnabled: boolean;
+}
+
+// Welltrans 推送结果
+export interface WelltransPushResult {
+  success: boolean;
+  totalCount: number;
+  successCount: number;
+  failCount: number;
+  message: string;
+  warnings: string[];
+  errorMessage: string;
+}
+
+// Welltrans 推送日志
+export interface WelltransPushLog {
+  id: string;
+  organizationId: string;
+  triggerType: string;
+  totalCount: number;
+  successCount: number;
+  failCount: number;
+  responseBody: string;
+  errorMessage: string;
+  createTime: number;
+}
+
 
 
 

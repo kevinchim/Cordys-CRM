@@ -10,6 +10,7 @@ export enum SystemRouteEnum {
   SYSTEM_PROCESS = 'systemProcess',
   SYSTEM_PROCESS_INDEX = 'systemProcessIndex',
   SYSTEM_PROCESS_WORKFLOW = 'systemProcessWorkflow',
+  SYSTEM_WELLTRANS_PUSH = 'systemWelltransPush',
 }
 
 export enum OpportunityRouteEnum {

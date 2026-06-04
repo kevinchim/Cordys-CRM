@@ -48,3 +48,9 @@ export const GetPageConfigImagePreviewUrl = '/ui/display/preview'; // 图片预�
 export const GetTitleImgUrl = `${
   import.meta.env.VITE_API_BASE_URL
 }${GetPageConfigImagePreviewUrl}?paramKey=ui.logoPlatform`;
+
+// Welltrans CRM API 推送
+export const GetWelltransConfigUrl = '/welltrans-push/config'; // 获取推送配置
+export const SaveWelltransConfigUrl = '/welltrans-push/config'; // 保存推送配置
+export const ExecuteWelltransPushUrl = '/welltrans-push/execute'; // 立即执行推送
+export const GetWelltransPushLogsUrl = '/welltrans-push/logs'; // 获取推送日志

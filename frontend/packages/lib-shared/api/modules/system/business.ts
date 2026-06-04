@@ -7,6 +7,7 @@ import {
   DeleteAuthUrl,
   DisableApiKeyUrl,
   EnableApiKeyUrl,
+  ExecuteWelltransPushUrl,
   ExportCenterDownloadUrl,
   GetApiKeyListUrl,
   GetAuthDetailUrl,
@@ -23,7 +24,10 @@ import {
   GetThirdPartyConfigUrl,
   GetThirdPartyResourceUrl,
   GetThirdTypeListUrl,
+  GetWelltransConfigUrl,
+  GetWelltransPushLogsUrl,
   SavePageConfigUrl,
+  SaveWelltransConfigUrl,
   SendEmailCodeUrl,
   SwitchThirdPartyUrl,
   SyncDEUrl,
@@ -55,6 +59,9 @@ import type {
   ThirdPartyResource,
   UpdateApiKeyParams,
   ThirdPartyDEConfig,
+  WelltransPushConfig,
+  WelltransPushLog,
+  WelltransPushResult,
 } from '@lib/shared/models/system/business';
 import {
   ExportCenterItem,
@@ -269,6 +276,26 @@ export default function useProductApi(CDR: CordysAxios) {
     return CDR.get<ThirdPartyResourceConfig>({ url: GetTenderConfigUrl }, { ignoreCancelToken: true });
   }
 
+  // Welltrans CRM API 推送 - 获取配置
+  function getWelltransConfig() {
+    return CDR.get<WelltransPushConfig>({ url: GetWelltransConfigUrl });
+  }
+
+  // Welltrans CRM API 推送 - 保存配置
+  function saveWelltransConfig(data: WelltransPushConfig) {
+    return CDR.post({ url: SaveWelltransConfigUrl, data });
+  }
+
+  // Welltrans CRM API 推送 - 立即执行推送
+  function executeWelltransPush() {
+    return CDR.post<WelltransPushResult>({ url: ExecuteWelltransPushUrl });
+  }
+
+  // Welltrans CRM API 推送 - 获取推送日志
+  function getWelltransPushLogs() {
+    return CDR.get<WelltransPushLog[]>({ url: GetWelltransPushLogsUrl });
+  }
+
   return {
     getConfigEmail,
     updateConfigEmail,
@@ -308,5 +335,9 @@ export default function useProductApi(CDR: CordysAxios) {
     savePageConfig,
     getPageConfig,
     getTenderConfig,
+    getWelltransConfig,
+    saveWelltransConfig,
+    executeWelltransPush,
+    getWelltransPushLogs,
   };
 }

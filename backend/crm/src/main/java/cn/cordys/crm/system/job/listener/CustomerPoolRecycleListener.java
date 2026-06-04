@@ -11,6 +11,7 @@ import cn.cordys.crm.customer.service.CustomerOwnerHistoryService;
 import cn.cordys.crm.customer.service.CustomerPoolService;
 import cn.cordys.crm.system.constants.NotificationConstants;
 import cn.cordys.crm.system.notice.CommonNoticeSendService;
+import cn.cordys.crm.system.service.WelltransPushService;
 import cn.cordys.mybatis.BaseMapper;
 import cn.cordys.mybatis.lambda.LambdaQueryWrapper;
 import jakarta.annotation.Resource;
@@ -58,6 +59,8 @@ public class CustomerPoolRecycleListener implements ApplicationListener<ExecuteE
     private CustomerContactService customerContactService;
     @Resource
     private BaseMapper<CustomerPoolDailyViewRecord> dailyViewRecordMapper;
+    @Resource
+    private WelltransPushService welltransPushService;
 
 
     @Override
@@ -107,6 +110,9 @@ public class CustomerPoolRecycleListener implements ApplicationListener<ExecuteE
 
         // 清理30天前的每日查看记录
         cleanOldDailyViewRecords();
+
+        // Welltrans API 推送：自动回收后按开关推送
+        triggerAutoPush(pools);
 
         log.info("客户资源回收完成");
     }
@@ -254,6 +260,9 @@ public class CustomerPoolRecycleListener implements ApplicationListener<ExecuteE
                 }
             }
         }));
+        // Welltrans API 推送：手动回收后按开关推送
+        triggerManualPush(pool);
+
         log.info("手动回收完成：poolId={}, 回收客户数={}", poolId, count[0]);
         return count[0];
     }
@@ -266,5 +275,37 @@ public class CustomerPoolRecycleListener implements ApplicationListener<ExecuteE
         LambdaQueryWrapper<CustomerPoolDailyViewRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.lt(CustomerPoolDailyViewRecord::getViewTime, thirtyDaysAgo);
         dailyViewRecordMapper.deleteByLambda(wrapper);
+    }
+
+    /**
+     * 自动回收后触发 Welltrans API 推送（按开关配置）
+     */
+    private void triggerAutoPush(List<CustomerPool> pools) {
+        if (!welltransPushService.isAutoPushEnabled()) {
+            return;
+        }
+        if (CollectionUtils.isEmpty(pools)) {
+            return;
+        }
+        String orgId = pools.get(0).getOrganizationId();
+        try {
+            welltransPushService.pushAllOwnedCustomers("AUTO", orgId, InternalUser.ADMIN.getValue());
+        } catch (Exception e) {
+            log.error("自动回收后 Welltrans 推送失败", e);
+        }
+    }
+
+    /**
+     * 手动回收后触发 Welltrans API 推送（按开关配置）
+     */
+    private void triggerManualPush(CustomerPool pool) {
+        if (!welltransPushService.isManualPushEnabled()) {
+            return;
+        }
+        try {
+            welltransPushService.pushAllOwnedCustomers("MANUAL", pool.getOrganizationId(), InternalUser.ADMIN.getValue());
+        } catch (Exception e) {
+            log.error("手动回收后 Welltrans 推送失败", e);
+        }
     }
 }

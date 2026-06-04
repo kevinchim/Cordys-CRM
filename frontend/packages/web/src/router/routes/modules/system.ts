@@ -110,6 +110,15 @@ const system: AppRouteRecordRaw = {
         permissions: ['OPERATION_LOG:READ'],
       },
     },
+    {
+      path: 'welltrans-push',
+      name: SystemRouteEnum.SYSTEM_WELLTRANS_PUSH,
+      component: () => import('@/views/system/welltrans-push/index.vue'),
+      meta: {
+        locale: 'menu.settings.welltransPush',
+        permissions: ['SYSTEM_SETTING:READ'],
+      },
+    },
   ],
 };
 
