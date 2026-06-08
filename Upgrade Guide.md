@@ -326,6 +326,14 @@ Flyway 自动执行 `V1.7.0_7__welltrans_push_log.sql` 创建 `sys_welltrans_pus
 - Header: `X-CRM-Api-Key`
 - Body: `{"customers": [{email, sales, type, iscooperated, isfullemailaddress, create_date}]}`
 
+### 移动端部署
+
+前端部署脚本 `03-frontend-deploy.sh` 会同时编译并部署 web 端和 mobile 端：
+- web 端部署到 `/app/static/`（桌面访问 `/`）
+- mobile 端部署到 `/app/static/mobile/`（手机访问自动跳转 `/mobile/`）
+
+手机端自动检测逻辑在 `frontend/packages/web/index.html` 中，检测到移动设备自动跳转。
+
 ---
 
 ## 回滚

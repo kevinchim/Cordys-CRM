@@ -236,7 +236,23 @@ cp $FSRC/views/system/welltrans-push/locale/en-US.ts     $FDST/views/system/well
 # web/src/api/modules/index.ts                 → +4个 Welltrans 函数导出
 ```
 
+```bash
+# === 前端编译（web + mobile） ===
+# 编译容器内同时构建两个前端
+cd /tmp/frontend-${VERSION}/packages/web && pnpm build
+cd /tmp/frontend-${VERSION}/packages/mobile && pnpm build
+
+# 部署 web
+docker cp .../web/dist/. ${CONTAINER}:/app/static/
+
+# 部署 mobile
+docker exec ${CONTAINER} mkdir -p /app/static/mobile
+docker cp .../mobile/dist/. ${CONTAINER}:/app/static/mobile/
+```
+
 测试: 登录后进入 **系统 → Welltrans CRM API 推送**，配置 API 地址和 Key，开启开关，点击立即执行推送。
+
+手机访问: `http://IP:端口` 自动跳转 `/mobile/` 移动端界面。
 
 ---
 
