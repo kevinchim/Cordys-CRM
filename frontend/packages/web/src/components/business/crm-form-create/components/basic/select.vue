@@ -31,7 +31,6 @@
       max-tag-count="responsive"
       clearable
       :render-label="renderOptionLabel"
-      :render-option="renderOptionLabel"
     />
   </n-form-item>
 </template>
