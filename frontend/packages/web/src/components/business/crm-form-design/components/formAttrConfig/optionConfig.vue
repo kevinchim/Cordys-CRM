@@ -6,7 +6,19 @@
     <n-radio-button value="custom" class="flex-1 text-center">
       {{ t('crmFormDesign.custom') }}
     </n-radio-button>
+    <n-radio-button value="dict" class="flex-1 text-center">
+      {{ t('crmFormDesign.dictSource') }}
+    </n-radio-button>
   </n-radio-group>
+  <n-select
+    v-if="fieldConfig.optionSource === 'dict'"
+    v-model:value="fieldConfig.dictCode"
+    :disabled="props.disabled"
+    :options="dictCategoryOptions"
+    :placeholder="t('crmFormDesign.selectDictCategory')"
+    clearable
+    @update:value="handleDictCodeChange"
+  />
   <n-cascader
     v-if="fieldConfig.optionSource === 'ref'"
     v-model:value="fieldConfig.refId"
@@ -181,6 +193,7 @@
     NRadio,
     NRadioButton,
     NRadioGroup,
+    NSelect,
     NTooltip,
   } from 'naive-ui';
   import { cloneDeep, debounce } from 'lodash-es';
@@ -195,7 +208,7 @@
   import { fullFormSettingList } from '@/components/business/crm-form-create/config';
   import { FormCreateField } from '@/components/business/crm-form-create/types';
 
-  import { getFormDesignConfig } from '@/api/modules';
+  import { getFormDesignConfig, getDictCategories, getDictItemsByCode } from '@/api/modules';
 
   const props = defineProps<{
     disabled?: boolean;
@@ -216,6 +229,26 @@
       FieldTypeEnum.DATA_SOURCE_MULTIPLE,
     ].includes(fieldConfig.value.type)
   );
+
+  // 字典数据源
+  const dictCategoryOptions = ref<{ label: string; value: string }[]>([]);
+  async function loadDictCategories() {
+    try {
+      const cats = await getDictCategories();
+      dictCategoryOptions.value = (cats || []).map((c: any) => ({ label: `${c.name} (${c.code})`, value: c.code }));
+    } catch { /* ignore */ }
+  }
+
+  async function handleDictCodeChange(code: string) {
+    if (!code) { fieldConfig.value.options = []; return; }
+    try {
+      const items = await getDictItemsByCode(code);
+      fieldConfig.value.options = (items || []).map((item: any) => ({ label: item.label, value: item.value }));
+      fieldConfig.value.customOptions = fieldConfig.value.options;
+    } catch { /* ignore */ }
+  }
+
+  onBeforeMount(() => { loadDictCategories(); });
 
   const defaultRefOptions = fullFormSettingList
     .filter((item) => !!item.formKey)

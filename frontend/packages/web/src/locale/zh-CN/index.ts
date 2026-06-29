@@ -42,6 +42,7 @@ export default {
     'menu.settings.workflowSetting': '工作流',
     'menu.settings.log': '系统日志',
     'menu.settings.welltransPush': 'Welltrans CRM API 推送',
+    'menu.settings.dictManage': '字典管理',
     'navbar.action.locale': '切换为中文',
     ...sys,
     ...localeSettings,

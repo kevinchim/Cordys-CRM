@@ -43,6 +43,7 @@ export default {
     'menu.settings.workflowSetting': 'Workflow',
     'menu.settings.log': 'Logs',
     'menu.settings.welltransPush': 'Welltrans CRM Push',
+    'menu.settings.dictManage': 'Dictionary',
     'navbar.action.locale': 'Switch to English',
     ...sys,
     ...localeSettings,

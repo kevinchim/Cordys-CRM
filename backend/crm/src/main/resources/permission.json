@@ -147,6 +147,25 @@
             "id": "PROCESS_SETTING:DELETE"
           }
         ]
+      },
+      {
+        "id": "DICT_MANAGE",
+        "name": "permission.dict_manage.name",
+        "children": [],
+        "permissions": [
+          {
+            "id": "DICT_MANAGE:READ"
+          },
+          {
+            "id": "DICT_MANAGE:ADD"
+          },
+          {
+            "id": "DICT_MANAGE:UPDATE"
+          },
+          {
+            "id": "DICT_MANAGE:DELETE"
+          }
+        ]
       }
     ]
   },

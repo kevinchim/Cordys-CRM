@@ -296,6 +296,37 @@ export default function useProductApi(CDR: CordysAxios) {
     return CDR.get<WelltransPushLog[]>({ url: GetWelltransPushLogsUrl });
   }
 
+  // 字典管理 - 分类
+  function getDictCategories() {
+    return CDR.get<any[]>({ url: '/dict-category/list' });
+  }
+  function addDictCategory(data: any) {
+    return CDR.post({ url: '/dict-category/add', data });
+  }
+  function updateDictCategory(data: any) {
+    return CDR.post({ url: '/dict-category/update', data });
+  }
+  function deleteDictCategory(id: string) {
+    return CDR.get({ url: `/dict-category/delete/${id}` });
+  }
+  function getDictItems(categoryId: string) {
+    return CDR.get<any[]>({ url: `/dict-category/${categoryId}/items` });
+  }
+  function getDictItemsByCode(code: string) {
+    return CDR.get<any[]>({ url: `/dict-category/items/by-code/${code}` });
+  }
+
+  // 字典管理 - 项
+  function addDictItem(data: any) {
+    return CDR.post({ url: '/dict-category/item/add', data });
+  }
+  function updateDictItem(data: any) {
+    return CDR.post({ url: '/dict-category/item/update', data });
+  }
+  function deleteDictItem(id: string) {
+    return CDR.get({ url: `/dict-category/item/delete/${id}` });
+  }
+
   return {
     getConfigEmail,
     updateConfigEmail,
@@ -339,5 +370,14 @@ export default function useProductApi(CDR: CordysAxios) {
     saveWelltransConfig,
     executeWelltransPush,
     getWelltransPushLogs,
+    getDictCategories,
+    addDictCategory,
+    updateDictCategory,
+    deleteDictCategory,
+    getDictItems,
+    getDictItemsByCode,
+    addDictItem,
+    updateDictItem,
+    deleteDictItem,
   };
 }

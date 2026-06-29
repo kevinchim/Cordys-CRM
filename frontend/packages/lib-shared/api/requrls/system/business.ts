@@ -54,3 +54,11 @@ export const GetWelltransConfigUrl = '/welltrans-push/config'; // 获取推送�
 export const SaveWelltransConfigUrl = '/welltrans-push/config'; // 保存推送配置
 export const ExecuteWelltransPushUrl = '/welltrans-push/execute'; // 立即执行推送
 export const GetWelltransPushLogsUrl = '/welltrans-push/logs'; // 获取推送日志
+
+// 字典管理
+export const GetDictCategoriesUrl = '/dict-category/list'; // 获取字典分类列表
+export const AddDictCategoryUrl = '/dict-category/add'; // 添加字典分类
+export const UpdateDictCategoryUrl = '/dict-category/update'; // 修改字典分类
+export const DeleteDictCategoryUrl = '/dict-category/delete'; // 删除字典分类
+export const GetDictItemsUrl = '/dict-category'; // 获取字典项（/{id}/items）
+export const GetDictItemsByCodeUrl = '/dict-category/items/by-code'; // 按编码获取字典项

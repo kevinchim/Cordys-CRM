@@ -18,6 +18,7 @@ const system: AppRouteRecordRaw = {
       'SYSTEM_SETTING:READ',
       'OPERATION_LOG:READ',
       'PROCESS_SETTING:READ',
+      'DICT_MANAGE:READ',
     ],
     icon: 'iconicon_set_up',
     collapsedLocale: 'menu.collapsedSettings',
@@ -117,6 +118,15 @@ const system: AppRouteRecordRaw = {
       meta: {
         locale: 'menu.settings.welltransPush',
         permissions: ['SYSTEM_SETTING:READ'],
+      },
+    },
+    {
+      path: 'dict-manage',
+      name: SystemRouteEnum.SYSTEM_DICT_MANAGE,
+      component: () => import('@/views/system/dict-manage/index.vue'),
+      meta: {
+        locale: 'menu.settings.dictManage',
+        permissions: ['DICT_MANAGE:READ'],
       },
     },
   ],

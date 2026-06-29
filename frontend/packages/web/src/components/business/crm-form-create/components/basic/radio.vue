@@ -25,8 +25,8 @@
       :disabled="props.fieldConfig.editable === false || !!props.fieldConfig.resourceFieldId"
     >
       <n-space :item-class="props.fieldConfig.direction === 'horizontal' ? '' : 'w-full'">
-        <n-radio v-for="item in props.fieldConfig.options" :key="item.value" :value="item.value">
-          {{ item.label }}
+        <n-radio v-for="item in radioOptions" :key="item.value" :value="item.value">
+          <span v-if="item.color" class="mr-[4px] font-bold" :style="{ color: item.color }">●</span>{{ item.label }}
         </n-radio>
       </n-space>
     </n-radio-group>
@@ -38,6 +38,7 @@
 
   import type { FormConfig } from '@lib/shared/models/system/module';
 
+  import { getDictItemsByCode } from '@/api/modules';
   import { FormCreateField } from '../../types';
 
   const props = defineProps<{
@@ -55,6 +56,20 @@
   const value = defineModel<string>('value', {
     default: '',
   });
+
+  const dictOpts = ref<{ label: string; value: string; color?: string }[]>([]);
+  const radioOptions = computed(() =>
+    props.fieldConfig.dictCode ? dictOpts.value : (props.fieldConfig.options || [])
+  );
+
+  async function loadDictOpts() {
+    if (!props.fieldConfig.dictCode) return;
+    try {
+      const items = await getDictItemsByCode(props.fieldConfig.dictCode);
+      dictOpts.value = (items || []).map((item: any) => ({ label: item.label, value: item.value, color: item.color || '' }));
+    } catch { /* ignore */ }
+  }
+  watch(() => props.fieldConfig.dictCode, loadDictOpts, { immediate: true });
 
   watch(
     () => props.fieldConfig.defaultValue,

@@ -137,6 +137,8 @@ export default {
   'crmFormDesign.submitDate': '提交日期',
   'crmFormDesign.autoCount': '自动计数',
   'crmFormDesign.custom': '自定义',
+  'crmFormDesign.dictSource': '字典数据源',
+  'crmFormDesign.selectDictCategory': '选择字典分类',
   'crmFormDesign.currentTime': '填写当时',
   'crmFormDesign.formLink': '表单联动',
   'crmFormDesign.formLinkSetting': '{formType}表单联动设置',

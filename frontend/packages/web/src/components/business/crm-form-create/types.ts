@@ -112,7 +112,7 @@ export interface FormCreateField {
   scope?: 'ALL' | 'CN';
   locationType?: 'PCD' | 'PC' | 'detail' | 'C' | 'P'; // C:国家, P:国家-省,PC: 省市, PCD: 省市区, detail: 省市区+详细地址
   // 选择器属性
-  optionSource?: 'ref' | 'custom'; // 选项来源,自定义还是引用
+  optionSource?: 'ref' | 'custom' | 'dict'; // 选项来源,自定义/引用/字典数据源
   refId?: string | null; // 引用的字段id
   refFormKey?: string; // 引用字段第一层
   customOptions?: FormCreateFieldOption[]; // 自定义字段的选项数据
@@ -145,6 +145,8 @@ export interface FormCreateField {
   linkRange?: (string | number)[]; // 联动限制可选范围
   fieldValue?: any; // 字段值
   isNew?: boolean;
+  // 字典数据源
+  dictCode?: string; // 字典分类编码，如 CUSTOMER_TYPE
   // 链接
   linkSource?: string;
   openMode?: string;

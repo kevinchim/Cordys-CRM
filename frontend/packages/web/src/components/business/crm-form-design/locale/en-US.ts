@@ -139,6 +139,8 @@ export default {
   'crmFormDesign.submitDate': 'Submission Date',
   'crmFormDesign.autoCount': 'Auto Count',
   'crmFormDesign.custom': 'Custom',
+  'crmFormDesign.dictSource': 'Dict Source',
+  'crmFormDesign.selectDictCategory': 'Select Dict Category',
   'crmFormDesign.currentTime': 'Current Time',
   'crmFormDesign.formLink': 'Form linkage',
   'crmFormDesign.formLinkSetting': '{formType} Form Linkage Settings',

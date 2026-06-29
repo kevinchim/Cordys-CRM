@@ -29,17 +29,21 @@
       :fallback-option="value !== null && value !== undefined && value !== '' ? fallbackOption : false"
       max-tag-count="responsive"
       clearable
+      :render-label="renderOptionLabel"
+      :render-option="renderOptionLabel"
     />
   </n-form-item>
 </template>
 
 <script setup lang="ts">
   import { NDivider, NFormItem, NSelect } from 'naive-ui';
+  import { h } from 'vue';
 
   import { FieldTypeEnum } from '@lib/shared/enums/formDesignEnum';
   import { useI18n } from '@lib/shared/hooks/useI18n';
   import type { FormConfig } from '@lib/shared/models/system/module';
 
+  import { getDictItemsByCode } from '@/api/modules';
   import { FormCreateField } from '../../types';
 
   const props = defineProps<{
@@ -60,11 +64,46 @@
     default: '',
   });
 
+  const dictOpts = ref<{ label: string; value: string; color?: string }[]>([]);
+
+  // 优先显示 dictOpts（从 API 加载），fallback 到 options（表单配置中保存的）
+  const resolvedOptions = computed(() => {
+    if (dictOpts.value.length > 0) return dictOpts.value;
+    return props.fieldConfig.options || [];
+  });
+
   const options = computed(() => {
     if (props.fieldConfig.linkRange) {
-      return props.fieldConfig.options?.filter((option) => props.fieldConfig.linkRange?.includes(option.value)) || [];
+      return resolvedOptions.value.filter((option) => props.fieldConfig.linkRange?.includes(option.value)) || [];
     }
-    return props.fieldConfig.options || [];
+    return resolvedOptions.value;
+  });
+
+  async function loadDictOpts() {
+    // 优先用 dictCode 加载；如果没有 dictCode 但有 optionSource==='dict' 且 options 为空，尝试用 options 里的第一个 value 作为 code
+    const code = props.fieldConfig.dictCode;
+    if (!code) return;
+    try {
+      const items = await getDictItemsByCode(code);
+      if (items && items.length > 0) {
+        dictOpts.value = items.map((item: any) => ({ label: item.label, value: item.value, color: item.color || '' }));
+      }
+    } catch { /* ignore */ }
+  }
+
+  function renderOptionLabel(option: any) {
+    const children = [];
+    if (option.color) {
+      children.push(h('span', { style: { color: option.color, marginRight: '6px', fontWeight: 'bold' } }, '●'));
+    }
+    children.push(h('span', option.label));
+    return h('span', children);
+  }
+
+  watch(() => props.fieldConfig.dictCode, loadDictOpts, { immediate: true });
+  // also load when component first mounts with optionSource === 'dict'
+  onBeforeMount(() => {
+    if (props.fieldConfig.optionSource === 'dict') loadDictOpts();
   });
 
   watch(

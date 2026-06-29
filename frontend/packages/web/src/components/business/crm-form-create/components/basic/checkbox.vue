@@ -27,11 +27,12 @@
     >
       <n-space :item-class="props.fieldConfig.direction === 'horizontal' ? '' : 'w-full'">
         <n-checkbox
-          v-for="item in props.fieldConfig.options"
+          v-for="item in checkboxOptions"
           :key="item.value"
           :value="item.value"
-          :label="item.label"
-        />
+        >
+          <span v-if="item.color" class="mr-[4px] font-bold" :style="{ color: item.color }">●</span>{{ item.label }}
+        </n-checkbox>
       </n-space>
     </n-checkbox-group>
   </n-form-item>
@@ -42,6 +43,7 @@
 
   import type { FormConfig } from '@lib/shared/models/system/module';
 
+  import { getDictItemsByCode } from '@/api/modules';
   import { FormCreateField } from '../../types';
 
   const props = defineProps<{
@@ -59,6 +61,19 @@
   const value = defineModel<(string | number)[]>('value', {
     default: [],
   });
+
+  const dictOpts = ref<{ label: string; value: string; color?: string }[]>([]);
+  const checkboxOptions = computed(() =>
+    props.fieldConfig.dictCode ? dictOpts.value : (props.fieldConfig.options || [])
+  );
+  async function loadDictOpts() {
+    if (!props.fieldConfig.dictCode) return;
+    try {
+      const items = await getDictItemsByCode(props.fieldConfig.dictCode);
+      dictOpts.value = (items || []).map((item: any) => ({ label: item.label, value: item.value, color: item.color || '' }));
+    } catch { /* ignore */ }
+  }
+  watch(() => props.fieldConfig.dictCode, loadDictOpts, { immediate: true });
 
   watch(
     () => props.fieldConfig.defaultValue,

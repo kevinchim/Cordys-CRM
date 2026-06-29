@@ -249,5 +249,12 @@ public class PermissionConstants {
     public static final String PROCESS_SETTING_UPDATE = "PROCESS_SETTING:UPDATE";
     public static final String PROCESS_SETTING_DELETE = "PROCESS_SETTING:DELETE";
     /*------ end: PROCESS_SETTING ------*/
+
+    /*------ start: DICT_MANAGE ------*/
+    public static final String DICT_MANAGE_READ = "DICT_MANAGE:READ";
+    public static final String DICT_MANAGE_ADD = "DICT_MANAGE:ADD";
+    public static final String DICT_MANAGE_UPDATE = "DICT_MANAGE:UPDATE";
+    public static final String DICT_MANAGE_DELETE = "DICT_MANAGE:DELETE";
+    /*------ end: DICT_MANAGE ------*/
 }
 
