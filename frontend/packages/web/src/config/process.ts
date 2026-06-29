@@ -1,7 +1,8 @@
 import { FormDesignKeyEnum } from '@lib/shared/enums/formDesignEnum';
+import { RequestEnum } from '@lib/shared/enums/httpEnum';
 import { ApprovalTypeEnum, ApproverTypeEnum, ProcessStatusEnum } from '@lib/shared/enums/process';
 import { useI18n } from '@lib/shared/hooks/useI18n';
-import { BasicFormParams, MoreSettingsParams } from '@lib/shared/models/system/process';
+import { ApprovalWebhookConfig, BasicFormParams, MoreSettingsParams } from '@lib/shared/models/system/process';
 
 import { StatusInfo } from '@/components/business/crm-approval/components/crm-approval-status.vue';
 
@@ -170,6 +171,15 @@ export const defaultMoreConfig: MoreSettingsParams = {
   statusPermissions: [],
 };
 
+export const defaultWebHookConfig: ApprovalWebhookConfig = {
+  webHookEnable: false,
+  webHookDescribe: '',
+  webHookUrl: '',
+  webHookMethod: RequestEnum.POST,
+  webHookHeader: '{"Content-Type":"application/json"}',
+  webHookBody: '',
+};
+
 export const businessTypeOptions = [
   {
     label: t('crmFormCreate.drawer.quotation'),
@@ -317,7 +327,7 @@ export function resolveApprovalActionNodeDefaults(approvalType: ApprovalTypeEnum
 
 export const approverLevelOptions = [
   {
-    label: t('org.directSuperior'),
+    label: t('process.process.flow.approverLevel.first'),
     value: '1',
   },
   {
@@ -358,17 +368,9 @@ export const approverLevelOptions = [
   },
 ];
 
-export const continuousApproverLevelOptions = [
-  {
-    ...approverLevelOptions[0],
-    label: t('process.process.flow.approverLevel.first'),
-  },
-  ...approverLevelOptions.slice(1),
-];
-
 export const departmentLevelOptions = [
   {
-    label: t('process.process.flow.departmentLevel.direct'),
+    label: t('process.process.flow.departmentLevel.first'),
     value: '1',
   },
   {
@@ -407,12 +409,4 @@ export const departmentLevelOptions = [
     label: t('process.process.flow.departmentLevel.tenth'),
     value: '10',
   },
-];
-
-export const continuousDepartmentLevelOptions = [
-  {
-    ...departmentLevelOptions[0],
-    label: t('process.process.flow.departmentLevel.first'),
-  },
-  ...departmentLevelOptions.slice(1),
 ];
