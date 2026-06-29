@@ -140,6 +140,7 @@
           <n-select
             v-model:value="fieldConfig.dataSourceType"
             :options="dataSourceOptions"
+            filterable
             :disabled="
               fieldConfig.disabledProps?.includes('dataSourceType') ||
               !!fieldConfig.resourceFieldId ||
@@ -1333,6 +1334,7 @@
     :field-config="fieldConfig"
     :form-fields="list.filter((field) => !field.resourceFieldId)"
     :form-key="props.formKey"
+    :custom-data-source-forms="customDataSourceForms"
     @save="handleDataSourceFilterSave"
   />
   <DataSourceDisplayFieldModal
@@ -1397,6 +1399,7 @@
   import { MemberApiTypeEnum, MemberSelectTypeEnum } from '@lib/shared/enums/moduleEnum';
   import { DeptNodeTypeEnum } from '@lib/shared/enums/systemEnum';
   import { useI18n } from '@lib/shared/hooks/useI18n';
+  import { CustomFormItem } from '@lib/shared/models/customForm';
 
   import CrmColorSelect from '@/components/pure/crm-color-select/index.vue';
   import CrmIcon from '@/components/pure/crm-icon-font/index.vue';
@@ -1405,6 +1408,7 @@
   import CrmPopConfirm from '@/components/pure/crm-pop-confirm/index.vue';
   import CrmTag from '@/components/pure/crm-tag/index.vue';
   import CrmDataSource from '@/components/business/crm-data-source-select/index.vue';
+  import { type DataSourceOption } from '@/components/business/crm-data-source-select/utils';
   import Divider from '@/components/business/crm-form-create/components/basic/divider.vue';
   import CrmFormCreateInputNumber from '@/components/business/crm-form-create/components/basic/inputNumber.vue';
   import CrmTextArea from '@/components/business/crm-form-create/components/basic/textarea.vue';
@@ -1434,6 +1438,8 @@
   import optionConfig from './optionConfig.vue';
   import subTableFields from './subTableFields.vue';
 
+  import { getCustomFormOptions } from '@/api/modules';
+
   // import useUserStore from '@/store/modules/user';
   import { SelectOption } from 'naive-ui/es/select/src/interface';
 
@@ -1452,6 +1458,8 @@
   const list = defineModel<FormCreateField[]>('fieldList', {
     required: true,
   });
+
+  const customFormSourceId = inject<Readonly<Ref<string>>>('customFormSourceId', ref(''));
 
   const showRules = computed(() => {
     if (!fieldConfig.value) {
@@ -1514,6 +1522,21 @@
   const formulaConfig = computed(() => {
     return safeParseFormula(fieldConfig.value.formula);
   });
+
+  const customDataSourceForms = ref<CustomFormItem[]>([]);
+  const customFormInit = ref(false);
+  async function initCustomDataSourceForms() {
+    try {
+      customFormInit.value = false;
+      const res = await getCustomFormOptions();
+      customDataSourceForms.value = res || [];
+      customFormInit.value = true;
+    } catch (error) {
+      customDataSourceForms.value = [];
+      // eslint-disable-next-line no-console
+      console.log(error);
+    }
+  }
 
   const disabledClearFormulaConfig = computed(() => {
     return !formulaConfig.value.source?.length || !!fieldConfig.value.resourceFieldId;
@@ -1672,21 +1695,30 @@
       }) as SelectOption[];
   });
 
-  const dataSourceOptions = computed<SelectOption[]>(() => {
-    const fullList = fullFormSettingList
+  const dataSourceOptions = computed<DataSourceOption[]>(() => {
+    const systemOptions = fullFormSettingList
       .filter((i) => i.dataSource)
       .map((item) => ({ ...item, value: item.dataSource }));
+
+    const customOptions = customDataSourceForms.value
+      .filter((item) => item.id !== customFormSourceId.value)
+      .map((item) => ({
+        ...item,
+        label: item.name,
+        value: item.id,
+      }));
+
     if (isSubTableField.value) {
       return parentField.value?.subFields?.some(
         (e) => e.dataSourceType === FieldDataSourceTypeEnum.PRICE && e.id !== fieldConfig.value?.id
       )
         ? // 子表格里只能有一个价格表
-          fullList.filter(
+          systemOptions.filter(
             (item) =>
               [FieldDataSourceTypeEnum.PRODUCT, FieldDataSourceTypeEnum.BUSINESS_TITLE].includes(item.value) &&
               item.formKey !== props.formKey
           )
-        : fullList.filter(
+        : systemOptions.filter(
             (item) =>
               [
                 FieldDataSourceTypeEnum.PRODUCT,
@@ -1695,13 +1727,17 @@
               ].includes(item.value) && item.formKey !== props.formKey
           );
     }
-    return fullList.filter((item) => item.formKey !== props.formKey);
+    return [...systemOptions.filter((item) => item.formKey !== props.formKey), ...customOptions];
   });
 
   watch(
     () => dataSourceOptions.value,
     (options) => {
-      if (fieldConfig.value && !options.some((item) => item.value === fieldConfig.value.dataSourceType)) {
+      if (
+        customFormInit.value &&
+        fieldConfig.value &&
+        !options.some((item) => item.value === fieldConfig.value.dataSourceType)
+      ) {
         fieldConfig.value.dataSourceType = options[0]?.value as FieldDataSourceTypeEnum;
       }
     },
@@ -1826,48 +1862,55 @@
   }
 
   const showDataSourceDisplayFieldModal = ref(false);
+
+  function buildDataSourceDisplayField(item: any) {
+    return {
+      ...item,
+      id: `${fieldConfig.value.id}_ref_${item.id}`,
+      name: item.name || item.title,
+      resourceFieldId: fieldConfig.value.id,
+      description: '',
+      showLabel: item.showLabel ?? true,
+      readable: true,
+      editable: false,
+      fieldWidth: item.fieldWidth ?? 1,
+      rules: [],
+      icon: item.icon || '',
+      show: true,
+      businessKey: item.businessKey || item.key || item.id,
+      type: item.type || FieldTypeEnum.INPUT,
+      options: item.options,
+    };
+  }
+
   function handleDataSourceDisplayFieldSave(value: string[], selectedList: any[]) {
     fieldConfig.value.showFields = value;
+    const displayFields = value
+      .map((id) => selectedList.find((item) => item.key === id))
+      .filter(Boolean)
+      .map((item) => buildDataSourceDisplayField(item));
+    fieldConfig.value.refFields = displayFields;
     if (isSubTableField.value) {
       const index = parentField.value?.subFields?.findIndex((item) => item.id === fieldConfig.value.id);
       if (index !== undefined && index >= 0 && parentField.value) {
         parentField.value.subFields = parentField.value?.subFields?.filter(
           (item) => item.resourceFieldId !== fieldConfig.value.id
         );
-        parentField.value?.subFields?.splice(
-          index + 1,
-          0,
-          ...selectedList.map((item) => ({
-            ...item,
-            id: `${fieldConfig.value.id}_ref_${item.id}`,
-            resourceFieldId: fieldConfig.value.id,
-            description: '',
-            editable: false,
-          }))
-        );
+        parentField.value?.subFields?.splice(index + 1, 0, ...displayFields);
       }
     } else {
       list.value = list.value.filter((item) => item.resourceFieldId !== fieldConfig.value.id);
       const fieldIndex = list.value.findIndex((item) => item.id === fieldConfig.value.id);
       if (fieldIndex >= 0) {
         nextTick(() => {
-          list.value.splice(
-            fieldIndex + 1,
-            0,
-            ...selectedList.map((item) => ({
-              ...item,
-              id: `${fieldConfig.value.id}_ref_${item.id}`,
-              resourceFieldId: fieldConfig.value.id,
-              description: '',
-              editable: false,
-            }))
-          );
+          list.value.splice(fieldIndex + 1, 0, ...displayFields);
         });
       }
     }
   }
   function handleClearDataSourceDisplayField() {
     fieldConfig.value.showFields = [];
+    fieldConfig.value.refFields = [];
     if (isSubTableField.value && parentField.value) {
       parentField.value.subFields = parentField.value?.subFields?.filter(
         (item) => item.resourceFieldId !== fieldConfig.value.id
@@ -1971,6 +2014,10 @@
       }
     }
   );
+
+  onBeforeMount(() => {
+    initCustomDataSourceForms();
+  });
 
   function fallbackOption(val: string | number) {
     return {

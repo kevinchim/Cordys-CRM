@@ -27,6 +27,10 @@ export default {
   'crm.approval.confirmCancelApproval': '确认撤回',
   'crm.approval.cancelApprovalSuccess': '已撤回',
   'crm.approval.submit': '提交申请',
+  'crm.approval.change': '变更',
+  'crm.approval.changeDescription': '变更说明',
+  'crm.approval.confirmChange': '保存并提审',
+  'crm.approval.confirmAndSubmitReview': '确认并提审',
   'crm.approval.approver': '审批人',
   'crm.approval.addSign': '加签',
   'crm.approval.addSignSuccess': '加签成功',
@@ -36,5 +40,5 @@ export default {
   'crm.approval.fileLimitTip': '附件最多可添加 10 个',
   'crm.approval.reviewDisabledTip': '未匹配到生效审批流，请联系管理员',
   'crm.approval.copyToTip': '抄送 {count} 人',
-  'crm.approval.historyTip': '该合同为历史数据，仅保留最终审批状态',
+  'crm.approval.historyTip': '该资源为历史数据，仅保留最终审批状态',
 };

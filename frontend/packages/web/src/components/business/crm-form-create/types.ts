@@ -25,6 +25,7 @@ export interface FormCreateFieldShowControlRule {
 
 export type FormCreateFieldDateType = 'month' | 'date' | 'datetime';
 export type DataSourceMatchType = 'MATCH_FIELD' | 'MATCH_VALUE';
+export type DataSourceType = FieldDataSourceTypeEnum | string;
 
 export interface DataSourceFilterItem {
   leftFieldId: string | undefined; // 左侧字段id
@@ -120,7 +121,7 @@ export interface FormCreateField {
   options?: FormCreateFieldOption[];
   initialOptions?: any[]; // 用于回显(成员、部门、数据源选择)
   // dataSource属性
-  dataSourceType?: FieldDataSourceTypeEnum;
+  dataSourceType?: DataSourceType;
   combineSearch?: DataSourceFilterCombine; // 数据源过滤条件
   showFields?: string[]; // 数据源显示字段
   linkFields?: DataSourceLinkField[]; // 数据源联动字段
@@ -161,6 +162,7 @@ export interface FormCreateField {
   subTableFieldId?: string; // 关联来源的子表格字段id
   price_sub?: string; // 价格表子表格行号标识
   listDisplayFields?: string[]; // 数据源列表展示字段
+  refFields?: FormCreateField[]; // 引用字段
 }
 
 export interface AttachmentInfo {

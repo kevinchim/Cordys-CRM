@@ -120,7 +120,7 @@ public abstract class BaseSearchService<T extends BasePageRequest, R> {
      */
     public Map<String, String> getProductNameMap(String orgId) {
         List<OptionDTO> productOption = extProductMapper.getOptions(orgId);
-        return productOption.stream().collect(Collectors.toMap(OptionDTO::getId, OptionDTO::getName));
+        return productOption.stream().collect(Collectors.toMap(OptionDTO::getIdAsString, OptionDTO::getName));
     }
 
     /**
@@ -137,7 +137,7 @@ public abstract class BaseSearchService<T extends BasePageRequest, R> {
             return new ArrayList<>();
         }
         return customerOptions.stream()
-                .map(OptionDTO::getId)
+                .map(OptionDTO::getIdAsString)
                 .toList();
     }
 
@@ -226,9 +226,10 @@ public abstract class BaseSearchService<T extends BasePageRequest, R> {
             Map<String, String> sourceMap = moduleFormService.initTypeSourceMap();
             String tableName = sourceMap.get(userSearchConfig.getDataSourceType());
             if (StringUtils.isBlank(tableName)) {
-                return; // 如果数据源类型不在已知范围内，直接返回
+                extModuleFieldMapper.getCustomFormOptionsByName(keyword, orgId).forEach(option -> ids.add(option.getIdAsString()));
+            } else {
+                extModuleFieldMapper.getSourceOptionsByName(tableName, keyword, orgId).forEach(option -> ids.add(option.getIdAsString()));
             }
-            extModuleFieldMapper.getSourceOptionsByName(tableName, keyword, orgId).forEach(option -> ids.add(option.getId()));
             if (CollectionUtils.isEmpty(ids)) {
                 return; // 如果没有匹配的数据，直接返回
             }
@@ -303,7 +304,7 @@ public abstract class BaseSearchService<T extends BasePageRequest, R> {
                             continue;
                         }
                         for (OptionDTO optionDTO : options) {
-                            if (Strings.CI.equals(optionDTO.getId(), (String) fieldValue)) {
+                            if (Strings.CI.equals(optionDTO.getIdAsString(), (String) fieldValue)) {
                                 fieldValue = optionDTO.getName();
                                 break;
                             }
@@ -325,7 +326,7 @@ public abstract class BaseSearchService<T extends BasePageRequest, R> {
                             continue;
                         }
                         for (OptionDTO optionDTO : optionDTOs) {
-                            if (Strings.CI.equals(optionDTO.getId(), s)) {
+                            if (Strings.CI.equals(optionDTO.getIdAsString(), s)) {
                                 String name = optionDTO.getName();
                                 if (!hasPermission) {
                                     getInputFieldValue(name, name.length());

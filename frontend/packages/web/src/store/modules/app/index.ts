@@ -20,6 +20,7 @@ import {
   getSystemVersion,
   getThirdConfigByType,
   getThirdPartyResource,
+  getTodoStatistic,
   getUnReadAnnouncement,
 } from '@/api/modules';
 import { defaultNavList } from '@/config/system';
@@ -102,6 +103,10 @@ const defaultModuleConfig = [
     moduleKey: ModuleConfigEnum.TENDER,
     enable: true,
   },
+  {
+    moduleKey: ModuleConfigEnum.CUSTOM_FORM,
+    enable: true,
+  },
 ];
 
 const useAppStore = defineStore('app', {
@@ -147,6 +152,13 @@ const useAppStore = defineStore('app', {
     navTopConfigList: [],
     activePlatformResource: cloneDeep(defaultPlatformResource),
     stageConfigList: [],
+    todoStatistic: {
+      total: 0,
+      quotation: 0,
+      contract: 0,
+      order: 0,
+      invoice: 0,
+    },
   }),
   getters: {
     getMenuCollapsed(state: AppState) {
@@ -183,6 +195,9 @@ const useAppStore = defineStore('app', {
       return state.navTopConfigList.map((e) => {
         return { ...navMap.get(e.navigationKey)! };
       });
+    },
+    getTodoStatistic(state: AppState) {
+      return state.todoStatistic;
     },
   },
   actions: {
@@ -349,17 +364,6 @@ const useAppStore = defineStore('app', {
         console.log(error);
       }
     },
-    // 显示 SQLBot
-    async showSQLBot() {
-      // TODO license 先放开
-      // const licenseStore = useLicenseStore();
-      // if (!licenseStore.hasLicense()) return;
-      const res = await getThirdConfigByType(CompanyTypeEnum.SQLBot);
-      if (res.config?.sqlBotChatEnable) {
-        await loadScript(res.config?.appSecret as string, { identifier: CompanyTypeEnum.SQLBot });
-      }
-    },
-
     // 初始化页面配置
     async initPageConfig() {
       try {
@@ -454,6 +458,15 @@ const useAppStore = defineStore('app', {
           value: e.id,
           label: e.name,
         }));
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.log(error);
+      }
+    },
+    async initTodoStatistic() {
+      try {
+        const res = await getTodoStatistic();
+        this.todoStatistic = res;
       } catch (error) {
         // eslint-disable-next-line no-console
         console.log(error);

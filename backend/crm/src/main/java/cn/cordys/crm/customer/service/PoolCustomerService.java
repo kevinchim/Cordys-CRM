@@ -123,8 +123,8 @@ public class PoolCustomerService {
      * @return 公海选项
      */
     public List<CustomerPoolDTO> getPoolOptions(String currentUser, String currentOrgId) {
-        List<CustomerPoolDTO> options = new ArrayList<>();
-        LambdaQueryWrapper<CustomerPool> poolWrapper = new LambdaQueryWrapper<>();
+        var options = new ArrayList<CustomerPoolDTO>();
+        var poolWrapper = new LambdaQueryWrapper<CustomerPool>();
         poolWrapper.eq(CustomerPool::getEnable, true)
                 .eq(CustomerPool::getOrganizationId, currentOrgId)
                 .orderByDesc(CustomerPool::getUpdateTime);
@@ -145,14 +145,14 @@ public class PoolCustomerService {
         List<String> poolIds = pools.stream()
                 .map(CustomerPool::getId)
                 .toList();
-        LambdaQueryWrapper<CustomerPoolPickRule> pickRuleWrapper = new LambdaQueryWrapper<>();
+        var pickRuleWrapper = new LambdaQueryWrapper<CustomerPoolPickRule>();
         pickRuleWrapper.in(CustomerPoolPickRule::getPoolId, poolIds);
 
         List<CustomerPoolPickRule> pickRules = pickRuleMapper.selectListByLambda(pickRuleWrapper);
         Map<String, CustomerPoolPickRule> pickRuleMap = pickRules.stream()
                 .collect(Collectors.toMap(CustomerPoolPickRule::getPoolId, pickRule -> pickRule));
 
-        LambdaQueryWrapper<CustomerPoolRecycleRule> recycleRuleWrapper = new LambdaQueryWrapper<>();
+        var recycleRuleWrapper = new LambdaQueryWrapper<CustomerPoolRecycleRule>();
         recycleRuleWrapper.in(CustomerPoolRecycleRule::getPoolId, poolIds);
 
         List<CustomerPoolRecycleRule> recycleRules = recycleRuleMapper.selectListByLambda(recycleRuleWrapper);
@@ -170,7 +170,7 @@ public class PoolCustomerService {
             List<String> scopeIds = userExtendService.getScopeOwnerIds(JSON.parseArray(pool.getScopeId(), String.class), currentOrgId);
             List<String> ownerIds = userExtendService.getScopeOwnerIds(JSON.parseArray(pool.getOwnerId(), String.class), currentOrgId);
             if (scopeIds.contains(currentUser) || ownerIds.contains(currentUser) || Strings.CS.equals(currentUser, InternalUser.ADMIN.getValue())) {
-                CustomerPoolDTO poolDTO = new CustomerPoolDTO();
+                var poolDTO = new CustomerPoolDTO();
                 BeanUtils.copyBean(poolDTO, pool);
 
                 poolDTO.setMembers(userExtendService.getScope(JSON.parseArray(pool.getScopeId(), String.class)));
@@ -178,9 +178,9 @@ public class PoolCustomerService {
                 poolDTO.setCreateUserName(userMap.get(pool.getCreateUser()));
                 poolDTO.setUpdateUserName(userMap.get(pool.getUpdateUser()));
 
-                CustomerPoolPickRuleDTO pickRule = new CustomerPoolPickRuleDTO();
+                var pickRule = new CustomerPoolPickRuleDTO();
                 BeanUtils.copyBean(pickRule, pickRuleMap.get(pool.getId()));
-                CustomerPoolRecycleRuleDTO recycleRule = new CustomerPoolRecycleRuleDTO();
+                var recycleRule = new CustomerPoolRecycleRuleDTO();
                 CustomerPoolRecycleRule customerPoolRecycleRule = recycleRuleMap.get(pool.getId());
                 BeanUtils.copyBean(recycleRule, customerPoolRecycleRule);
                 recycleRule.setConditions(JSON.parseArray(customerPoolRecycleRule.getCondition(), RuleConditionDTO.class));
@@ -215,7 +215,7 @@ public class PoolCustomerService {
     public void pick(PoolCustomerPickRequest request, String currentUser, String currentOrgId) {
         CustomerPool pool = poolMapper.selectByPrimaryKey(request.getPoolId());
         validateCapacity(1, currentUser, currentOrgId);
-        LambdaQueryWrapper<CustomerPoolPickRule> pickRuleWrapper = new LambdaQueryWrapper<>();
+        var pickRuleWrapper = new LambdaQueryWrapper<CustomerPoolPickRule>();
         pickRuleWrapper.eq(CustomerPoolPickRule::getPoolId, request.getPoolId());
         List<CustomerPoolPickRule> customerPoolPickRules = pickRuleMapper.selectListByLambda(pickRuleWrapper);
         CustomerPoolPickRule pickRule = customerPoolPickRules.getFirst();
@@ -264,7 +264,7 @@ public class PoolCustomerService {
     public void batchPick(PoolBatchPickRequest request, String currentUser, String currentOrgId) {
         CustomerPool pool = poolMapper.selectByPrimaryKey(request.getPoolId());
         validateCapacity(request.getBatchIds().size(), currentUser, currentOrgId);
-        LambdaQueryWrapper<CustomerPoolPickRule> pickRuleWrapper = new LambdaQueryWrapper<>();
+        var pickRuleWrapper = new LambdaQueryWrapper<CustomerPoolPickRule>();
         pickRuleWrapper.eq(CustomerPoolPickRule::getPoolId, request.getPoolId());
         List<CustomerPoolPickRule> customerPoolPickRules = pickRuleMapper.selectListByLambda(pickRuleWrapper);
         CustomerPoolPickRule pickRule = customerPoolPickRules.getFirst();
@@ -328,7 +328,7 @@ public class PoolCustomerService {
         if (CollectionUtils.isNotEmpty(conditions)) {
             filter = (int) extCustomerMapper.filterOwnerCount(ownUserId, conditions);
         }
-        LambdaQueryWrapper<Customer> customerWrapper = new LambdaQueryWrapper<>();
+        var customerWrapper = new LambdaQueryWrapper<Customer>();
         customerWrapper.eq(Customer::getOwner, ownUserId).eq(Customer::getInSharedPool, false);
         int ownCount = customerMapper.selectListByLambda(customerWrapper).size();
         if (customerCapacity.getCapacity() - (ownCount - filter) < processCount) {
@@ -408,7 +408,7 @@ public class PoolCustomerService {
      */
     public void validateDailyPickNum(int pickingCount, String ownUserId, CustomerPoolPickRule pickRule) {
         if (pickRule.getLimitOnNumber()) {
-            LambdaQueryWrapper<Customer> customerWrapper = new LambdaQueryWrapper<>();
+            var customerWrapper = new LambdaQueryWrapper<Customer>();
             customerWrapper
                     .eq(Customer::getOwner, ownUserId)
                     .eq(Customer::getInSharedPool, false)
@@ -651,6 +651,9 @@ public class PoolCustomerService {
         if (customer == null) {
             throw new IllegalArgumentException(Translator.get("customer.not.exist"));
         }
+        if (!customer.getInSharedPool()) {
+            throw new GenericException(Translator.getWithArgs("customer.pool.occupied", customer.getName()));
+        }
 
         if (!isPoolAdmin && pickRule != null) {
             if (pickRule.getLimitNew()) {
@@ -720,7 +723,7 @@ public class PoolCustomerService {
 
         if (Strings.CS.equals(field.getBusinessKey(), BusinessModuleField.CUSTOMER_OWNER.getBusinessKey())) {
             // 修改负责人，走批量分配的接口
-            PoolBatchAssignRequest batchAssignRequest = new PoolBatchAssignRequest();
+            var batchAssignRequest = new PoolBatchAssignRequest();
             batchAssignRequest.setBatchIds(request.getIds());
             batchAssignRequest.setAssignUserId(request.getFieldValue().toString());
             batchAssign(batchAssignRequest, batchAssignRequest.getAssignUserId(), organizationId, userId);

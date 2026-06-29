@@ -14,7 +14,16 @@
         class="px-0 pt-0"
         :title="t('common.formFields')"
         @select-part="(ids) => updateSelectedList(ids, customList)"
-        @select-item="(meta) => selectItem(ColumnTypeEnum.CUSTOM, meta)"
+        @select-item="(meta) => selectItem(meta, customList)"
+      />
+      <FieldSection
+        v-if="systemList.length"
+        v-model:selected-ids="selectedSystemIds"
+        :items="systemList"
+        class="px-0 pt-0"
+        :title="t('common.systemFields')"
+        @select-part="(ids) => updateSelectedList(ids, systemList)"
+        @select-item="(meta) => selectItem(meta, systemList)"
       />
       <FieldSection
         v-if="subTableList.length"
@@ -23,7 +32,7 @@
         class="px-0 pt-0"
         :title="t('crmFormDesign.subTableField')"
         @select-part="(ids) => updateSelectedList(ids, subTableList)"
-        @select-item="(meta) => selectItem(ColumnTypeEnum.SUB_TABLE, meta)"
+        @select-item="(meta) => selectItem(meta, subTableList)"
       />
     </n-scrollbar>
   </CrmModal>
@@ -38,11 +47,19 @@
   import { ExportTableColumnItem } from '@lib/shared/models/common';
 
   import CrmModal from '@/components/pure/crm-modal/index.vue';
+  import { getDataSourceFormKey, isCustomDataSourceType } from '@/components/business/crm-data-source-select/utils';
   import { dataSourceFilterFormKeyMap } from '@/components/business/crm-form-create/config';
   import { FormCreateField } from '@/components/business/crm-form-create/types';
   import FieldSection from '@/components/business/crm-table-export-modal/components/fieldSection.vue';
 
-  import { getBusinessTitleModuleForm, getFieldDisplayList } from '@/api/modules';
+  import {
+    getBusinessTitleModuleForm,
+    getContractStatusConfig,
+    getFieldDisplayList,
+    getOrderStatusConfig,
+  } from '@/api/modules';
+  import { quotationStatus } from '@/config/opportunity';
+  import { processStatusOptions } from '@/config/process';
 
   const { t } = useI18n();
 
@@ -60,41 +77,177 @@
     (e: 'save', selectedIdList: string[], selectedList: any[]): void;
   }>();
 
-  const allColumns = ref<ExportTableColumnItem[]>([]);
+  type DisplayFieldOption = {
+    label: string;
+    value: string | number | boolean;
+  };
 
-  const formKey = computed<FormDesignKeyEnum>(() => {
-    return dataSourceFilterFormKeyMap[
-      props.fieldConfig.dataSourceType || FieldDataSourceTypeEnum.CUSTOMER
-    ] as FormDesignKeyEnum;
+  type DisplayFieldItem = ExportTableColumnItem &
+    Omit<Partial<FormCreateField>, 'options'> & {
+      name?: string;
+      options?: DisplayFieldOption[];
+    };
+
+  const dataSourceType = computed(() => props.fieldConfig.dataSourceType);
+  const isCustomForm = computed(() => isCustomDataSourceType(dataSourceType.value));
+  const formKey = computed<FormDesignKeyEnum | undefined>(() =>
+    getDataSourceFormKey(dataSourceType.value, dataSourceFilterFormKeyMap)
+  );
+  const isBusinessTitleSource = computed(
+    () => props.fieldConfig.dataSourceType === FieldDataSourceTypeEnum.BUSINESS_TITLE
+  );
+  const contractStageOptions = ref<{ label: string; value: string }[]>([]);
+  const orderStageOptions = ref<{ label: string; value: string }[]>([]);
+  const customList = ref<DisplayFieldItem[]>([]);
+  const subTableList = ref<DisplayFieldItem[]>([]);
+  const systemColumnMap = computed<Record<string, DisplayFieldItem[]>>(() => ({
+    [FormDesignKeyEnum.OPPORTUNITY_QUOTATION]: [
+      {
+        id: 'invalid',
+        key: 'invalid',
+        title: t('common.status'),
+        name: t('common.status'),
+        columnType: ColumnTypeEnum.CUSTOM,
+        type: FieldTypeEnum.SELECT,
+        fieldWidth: 1,
+        showLabel: true,
+        options: quotationStatus,
+      },
+      {
+        id: 'approvalStatus',
+        key: 'approvalStatus',
+        title: t('common.approvalStatus'),
+        name: t('common.approvalStatus'),
+        columnType: ColumnTypeEnum.CUSTOM,
+        type: FieldTypeEnum.SELECT,
+        fieldWidth: 1,
+        showLabel: true,
+        options: processStatusOptions,
+      },
+    ],
+    [FormDesignKeyEnum.CONTRACT]: [
+      {
+        id: 'stage',
+        key: 'stage',
+        title: t('contract.status'),
+        name: t('contract.status'),
+        columnType: ColumnTypeEnum.CUSTOM,
+        type: FieldTypeEnum.SELECT,
+        fieldWidth: 1,
+        showLabel: true,
+        options: contractStageOptions.value,
+      },
+      {
+        id: 'approvalStatus',
+        key: 'approvalStatus',
+        title: t('contract.approvalStatus'),
+        name: t('contract.approvalStatus'),
+        columnType: ColumnTypeEnum.CUSTOM,
+        type: FieldTypeEnum.SELECT,
+        fieldWidth: 1,
+        showLabel: true,
+        options: processStatusOptions,
+      },
+    ],
+    [FormDesignKeyEnum.ORDER]: [
+      {
+        id: 'stage',
+        key: 'stage',
+        title: t('order.status'),
+        name: t('order.status'),
+        columnType: ColumnTypeEnum.CUSTOM,
+        type: FieldTypeEnum.SELECT,
+        fieldWidth: 1,
+        showLabel: true,
+        options: orderStageOptions.value,
+      },
+      {
+        id: 'approvalStatus',
+        key: 'approvalStatus',
+        title: t('common.approvalStatus'),
+        name: t('common.approvalStatus'),
+        columnType: ColumnTypeEnum.CUSTOM,
+        type: FieldTypeEnum.SELECT,
+        fieldWidth: 1,
+        showLabel: true,
+        options: processStatusOptions,
+      },
+    ],
+    [FormDesignKeyEnum.INVOICE]: [
+      {
+        id: 'approvalStatus',
+        key: 'approvalStatus',
+        title: t('common.approvalStatus'),
+        name: t('common.approvalStatus'),
+        columnType: ColumnTypeEnum.CUSTOM,
+        type: FieldTypeEnum.SELECT,
+        fieldWidth: 1,
+        showLabel: true,
+        options: processStatusOptions,
+      },
+    ],
+  }));
+  const systemList = computed<DisplayFieldItem[]>(() => {
+    return systemColumnMap.value[formKey.value as FormDesignKeyEnum] || [];
   });
 
   async function getDisplayList() {
     try {
-      if (props.fieldConfig.dataSourceType === FieldDataSourceTypeEnum.BUSINESS_TITLE) {
-        const res = await getBusinessTitleModuleForm();
-        allColumns.value = res.fields.map((item) => {
-          return {
-            ...item,
-            key: item.id,
-            title: t(item.name),
-            columnType: ColumnTypeEnum.CUSTOM,
-            name: t(item.name),
-            type: FieldTypeEnum.INPUT,
-            fieldWidth: 1,
-            showLabel: true,
-          };
-        });
-      } else {
-        const res = await getFieldDisplayList(formKey.value);
-        allColumns.value = res.fields.map((item) => {
-          return {
-            key: item.id,
-            title: item.name,
-            columnType: item.subTableFieldId ? ColumnTypeEnum.SUB_TABLE : ColumnTypeEnum.CUSTOM,
-            ...item,
-          };
-        });
+      contractStageOptions.value = [];
+      orderStageOptions.value = [];
+      customList.value = [];
+      subTableList.value = [];
+
+      if (formKey.value === FormDesignKeyEnum.CONTRACT) {
+        const contractStageConfig = await getContractStatusConfig();
+        contractStageOptions.value = contractStageConfig.stageConfigList.map((item) => ({
+          label: item.name,
+          value: item.id,
+        }));
       }
+
+      if (formKey.value === FormDesignKeyEnum.ORDER) {
+        const orderStageConfig = await getOrderStatusConfig();
+        orderStageOptions.value = orderStageConfig.stageConfigList.map((item) => ({
+          label: item.name,
+          value: item.id,
+        }));
+      }
+
+      let res;
+      if (isCustomForm.value) {
+        res = await getFieldDisplayList(dataSourceType.value as string);
+      } else if (isBusinessTitleSource.value) {
+        res = await getBusinessTitleModuleForm();
+      } else {
+        res = await getFieldDisplayList(formKey.value as FormDesignKeyEnum);
+      }
+
+      let fieldColumns: DisplayFieldItem[] = [];
+      if (isBusinessTitleSource.value) {
+        fieldColumns = res.fields.map((item) => ({
+          ...item,
+          key: item.id,
+          title: t(item.name),
+          columnType: ColumnTypeEnum.CUSTOM,
+          name: t(item.name),
+          type: FieldTypeEnum.INPUT,
+          fieldWidth: 1,
+          showLabel: true,
+        }));
+      } else {
+        fieldColumns = res.fields.map((item) => ({
+          key: item.id,
+          title: item.name,
+          columnType: item.subTableFieldId ? ColumnTypeEnum.SUB_TABLE : ColumnTypeEnum.CUSTOM,
+          ...item,
+        }));
+      }
+
+      customList.value = fieldColumns.filter((item) => item.columnType === ColumnTypeEnum.CUSTOM);
+      subTableList.value = props.isSubTableField
+        ? fieldColumns.filter((item) => item.columnType === ColumnTypeEnum.SUB_TABLE)
+        : [];
     } catch (error) {
       // eslint-disable-next-line no-console
       console.log(error);
@@ -113,11 +266,6 @@
     }
   );
 
-  const subTableList = computed(() =>
-    !props.isSubTableField ? [] : allColumns.value.filter((item) => item.columnType === ColumnTypeEnum.SUB_TABLE)
-  );
-  const customList = computed(() => allColumns.value.filter((item) => item.columnType === ColumnTypeEnum.CUSTOM));
-
   const selectedList = ref<any[]>([]);
 
   const selectedSubTableIds = computed(() =>
@@ -125,7 +273,10 @@
   );
 
   const selectedCustomIds = computed(() =>
-    selectedList.value.filter((e) => e.columnType === ColumnTypeEnum.CUSTOM).map((e) => e.key)
+    selectedList.value.filter((e) => customList.value.some((item) => item.key === e.key)).map((e) => e.key)
+  );
+  const selectedSystemIds = computed(() =>
+    selectedList.value.filter((e) => systemList.value.some((item) => item.key === e.key)).map((e) => e.key)
   );
 
   const updateSelectedList = (ids: string[], sourceList: any[]) => {
@@ -134,12 +285,9 @@
     selectedList.value = [...remainingItems, ...newItems];
   };
 
-  function selectItem(columnType: ColumnTypeEnum, meta: { actionType: 'check' | 'uncheck'; value: string | number }) {
+  function selectItem(meta: { actionType: 'check' | 'uncheck'; value: string | number }, sourceList: any[]) {
     if (meta.actionType === 'check') {
-      // 添加选中的项
-      const itemToAdd = (columnType === ColumnTypeEnum.SUB_TABLE ? subTableList.value : customList.value).find(
-        (i) => i.key === meta.value
-      );
+      const itemToAdd = sourceList.find((i) => i.key === meta.value);
       if (itemToAdd) {
         selectedList.value.push(itemToAdd);
       }
@@ -151,7 +299,11 @@
 
   function handleConfirm() {
     show.value = false;
-    emit('save', [...selectedSubTableIds.value, ...selectedCustomIds.value], selectedList.value);
+    emit(
+      'save',
+      [...selectedCustomIds.value, ...selectedSystemIds.value, ...selectedSubTableIds.value],
+      selectedList.value
+    );
   }
 
   function handleCancel() {
@@ -159,11 +311,16 @@
     show.value = false;
   }
 
-  watch([() => props.fieldConfig?.showFields, () => allColumns.value], () => {
-    if (props.fieldConfig?.showFields && allColumns.value) {
-      selectedList.value = allColumns.value.filter((item) => props.fieldConfig?.showFields?.includes(item.key));
-    } else {
-      selectedList.value = [];
+  watch(
+    [() => props.fieldConfig?.showFields, () => customList.value, () => systemList.value, () => subTableList],
+    () => {
+      const allSelectedOptions = [...customList.value, ...systemList.value, ...subTableList.value];
+
+      if (props.fieldConfig?.showFields && allSelectedOptions.length) {
+        selectedList.value = allSelectedOptions.filter((item) => props.fieldConfig?.showFields?.includes(item.key));
+      } else {
+        selectedList.value = [];
+      }
     }
-  });
+  );
 </script>

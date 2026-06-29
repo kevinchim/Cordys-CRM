@@ -2,10 +2,12 @@ package cn.cordys.common.service;
 
 
 import cn.cordys.common.constants.FormKey;
+import cn.cordys.common.util.CommonBeanFactory;
 import cn.cordys.crm.clue.service.ClueService;
 import cn.cordys.crm.contract.service.*;
 import cn.cordys.crm.customer.service.CustomerContactService;
 import cn.cordys.crm.customer.service.CustomerService;
+import cn.cordys.crm.form.service.CustomFormDataService;
 import cn.cordys.crm.opportunity.service.OpportunityQuotationService;
 import cn.cordys.crm.opportunity.service.OpportunityService;
 import cn.cordys.crm.order.service.OrderService;
@@ -81,6 +83,7 @@ public class FieldSourceServiceProvider {
 		SERVICE_MAP.put(FieldSourceType.ORDER, orderService);
 		SERVICE_MAP.put(FieldSourceType.CONTRACT_PAYMENT_RECORD, paymentRecordService);
 		SERVICE_MAP.put(FieldSourceType.PAYMENT_PLAN, paymentPlanService);
+		SERVICE_MAP.put(FieldSourceType.INVOICE, invoiceService);
 
 		APPROVAL_FORM_SERVICE_MAP.put(FormKey.QUOTATION.getKey(), opportunityQuotationService);
 		APPROVAL_FORM_SERVICE_MAP.put(FormKey.CONTRACT.getKey(), contractService);
@@ -93,7 +96,11 @@ public class FieldSourceServiceProvider {
      */
     @SuppressWarnings("unchecked")
     public static <T> T getService(FieldSourceType type) {
-        return (T) SERVICE_MAP.get(type);
+		Object service = SERVICE_MAP.get(type);
+		if (service != null) {
+			return (T) service;
+		}
+		return (T) CommonBeanFactory.getBean(CustomFormDataService.class);
     }
 
 	/**
@@ -203,5 +210,10 @@ public class FieldSourceServiceProvider {
 	@SuppressWarnings("unchecked")
 	public List<Object> batchGetSimpleByIds(FieldSourceType type, List<String> ids) {
 		return (List<Object>) executeServiceMethod(type, ids, "batchGetSimpleByIds");
+	}
+
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	public Object safeGetFieldsById(String formKey, String id) {
+		return executeServiceMethod(formKey, id, "getFieldValues");
 	}
 }

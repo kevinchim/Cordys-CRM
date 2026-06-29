@@ -89,6 +89,11 @@ export enum FullPageEnum {
   FULL_PAGE_EXPORT_ORDER = 'fullPageExportOrder',
 }
 
+export enum CustomFormRouteEnum {
+  CUSTOM_FORM = 'customForm',
+  CUSTOM_FORM_INDEX = 'customFormIndex',
+}
+
 export const AppRouteEnum = {
   ...SystemRouteEnum,
   ...OpportunityRouteEnum,
@@ -102,4 +107,5 @@ export const AppRouteEnum = {
   ...ContractRouteEnum,
   ...OrderRouteEnum,
   ...TenderRouteEnum,
+  ...CustomFormRouteEnum,
 };

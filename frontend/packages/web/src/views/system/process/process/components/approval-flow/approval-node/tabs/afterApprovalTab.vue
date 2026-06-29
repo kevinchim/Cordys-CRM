@@ -25,6 +25,8 @@
             <n-select
               v-model:value="line.fieldId"
               :disabled="props.readonly"
+              filterable
+              :render-option="renderOption"
               :options="getFieldOptions(line.fieldId)"
               :placeholder="t('common.pleaseSelect')"
               @update:value="(value) => handleFieldUpdate(line, value)"
@@ -46,6 +48,7 @@
               :form-detail="line"
               :need-init-detail="true"
               @update:value="(value: unknown) => handleFieldValueUpdate(line, value)"
+              @change-options="(options: SelectedUsersItem[]) => handleFieldValueOptionsUpdate(line, options)"
             />
             <n-form-item
               v-else
@@ -80,21 +83,170 @@
         {{ t('common.add') }}
       </n-button>
     </div>
+
+    <div class="mt-[16px]">
+      <div class="mb-[16px] flex items-center gap-[8px]">
+        <n-switch
+          v-model:value="activeWebhookConfig.webHookEnable"
+          :rubber-band="false"
+          :disabled="props.readonly"
+          @update:value="handleWebhookEnableChange"
+        />
+        <div class="font-semibold text-[var(--text-n1)]">{{ t('process.process.flow.webhook') }}</div>
+        <n-tooltip :delay="300" placement="top-start" :show-arrow="false">
+          <template #trigger>
+            <CrmIcon
+              type="iconicon_help_circle"
+              :size="16"
+              class="text-[var(--text-n4)] hover:text-[var(--primary-8)]"
+            />
+          </template>
+          {{ t('process.process.flow.webhookTip') }}
+        </n-tooltip>
+      </div>
+
+      <div v-if="activeWebhookConfig.webHookEnable" class="flex flex-col gap-[12px]">
+        <n-form
+          ref="webHookFormRef"
+          class="process-setting-form"
+          require-mark-placement="right"
+          :model="activeWebhookConfig"
+          label-placement="top"
+        >
+          <n-form-item
+            class="after-approval-webhook-form-item"
+            :label="t('process.process.flow.webhookDescription')"
+            path="webHookDescribe"
+          >
+            <n-input
+              v-model:value="activeWebhookConfig.webHookDescribe"
+              :disabled="props.readonly"
+              type="textarea"
+              :maxlength="1000"
+              :autosize="{ minRows: 3, maxRows: 5 }"
+              :placeholder="t('process.process.flow.webhookDescriptionPlaceholder')"
+            />
+          </n-form-item>
+
+          <n-form-item
+            class="after-approval-webhook-form-item"
+            :label="t('process.process.flow.webhookUrl')"
+            path="webHookUrl"
+            :rule="[
+              {
+                required: activeWebhookConfig.webHookEnable,
+                message: t('common.notNull', { value: `${t('process.process.flow.webhookUrl')}` }),
+                trigger: ['blur', 'input'],
+              },
+              {
+                validator: validateWebhookUrl,
+                trigger: ['blur', 'input'],
+              },
+            ]"
+          >
+            <n-input
+              v-model:value="activeWebhookConfig.webHookUrl"
+              :disabled="props.readonly"
+              :maxlength="1000"
+              :placeholder="t('process.process.flow.webhookUrlPlaceholder')"
+            />
+          </n-form-item>
+
+          <n-form-item
+            class="after-approval-webhook-form-item"
+            :label="t('process.process.flow.webhookMethod')"
+            path="webHookMethod"
+          >
+            <n-radio-group v-model:value="activeWebhookConfig.webHookMethod" :disabled="props.readonly">
+              <div class="flex flex-col gap-[8px]">
+                <n-radio :value="RequestEnum.POST">POST</n-radio>
+                <n-radio :value="RequestEnum.GET">GET</n-radio>
+              </div>
+            </n-radio-group>
+          </n-form-item>
+
+          <n-form-item
+            class="after-approval-webhook-form-item"
+            :label="t('process.process.flow.webhookHeaders')"
+            path="webHookHeader"
+          >
+            <n-input
+              v-model:value="activeWebhookConfig.webHookHeader"
+              :disabled="props.readonly"
+              type="textarea"
+              :maxlength="1000"
+              :autosize="{ minRows: 3, maxRows: 6 }"
+              :placeholder="webhookHeadersPlaceholder"
+            />
+          </n-form-item>
+
+          <n-form-item
+            class="after-approval-webhook-form-item"
+            :label="t('process.process.flow.webhookBody')"
+            path="webHookBody"
+            :rule="[
+              {
+                required: activeWebhookConfig.webHookMethod === RequestEnum.POST,
+                message: t('common.notNull', { value: `${t('process.process.flow.webhookBody')}` }),
+                trigger: ['blur', 'input'],
+              },
+            ]"
+          >
+            <n-input
+              v-model:value="activeWebhookConfig.webHookBody"
+              :disabled="props.readonly"
+              type="textarea"
+              :maxlength="1000"
+              :autosize="{ minRows: 6, maxRows: 10 }"
+              :placeholder="webhookBodyPlaceholder"
+            />
+          </n-form-item>
+
+          <div class="flex items-center gap-[8px]">
+            <n-button type="primary" ghost :loading="testLoading" @click="handleTestWebhook">
+              {{ t('common.testLink') }}
+            </n-button>
+            <n-button :disabled="props.readonly" @click="handleCancelWebhook">
+              {{ t('common.cancel') }}
+            </n-button>
+          </div>
+        </n-form>
+      </div>
+    </div>
   </n-scrollbar>
 </template>
 
 <script setup lang="ts">
-  import { computed, ref, watch } from 'vue';
-  import { type FormInst, NButton, NEmpty, NForm, NFormItem, NInput, NScrollbar, NSelect, NSwitch } from 'naive-ui';
+  import { computed, ref, shallowRef, VNode, VNodeChild, watch } from 'vue';
+  import {
+    type FormInst,
+    NButton,
+    NEmpty,
+    NForm,
+    NFormItem,
+    NInput,
+    NRadio,
+    NRadioGroup,
+    NScrollbar,
+    NSelect,
+    NSwitch,
+    NTooltip,
+    SelectOption,
+    useMessage,
+  } from 'naive-ui';
   import { cloneDeep } from 'lodash-es';
 
   import { FieldRuleEnum, FieldTypeEnum, FormDesignKeyEnum } from '@lib/shared/enums/formDesignEnum';
+  import { RequestEnum } from '@lib/shared/enums/httpEnum';
   import { useI18n } from '@lib/shared/hooks/useI18n';
   import { getRuleType } from '@lib/shared/method/formCreate';
+  import { validateHttpUrl } from '@lib/shared/method/validate';
+  import type { SelectedUsersItem } from '@lib/shared/models/system/module';
   import type {
     ApprovalActionNode,
     ApprovalFieldUpdateConfig,
     ApprovalPostConfig,
+    ApprovalWebhookConfig,
   } from '@lib/shared/models/system/process';
 
   import CrmIcon from '@/components/pure/crm-icon-font/index.vue';
@@ -114,7 +266,15 @@
   import TagInput from '@/components/business/crm-form-create/components/basic/tagInput.vue';
   import Textarea from '@/components/business/crm-form-create/components/basic/textarea.vue';
   import { getFormConfigApiMap, rules } from '@/components/business/crm-form-create/config';
-  import type { FormCreateField, FormCreateFieldRule } from '@/components/business/crm-form-create/types';
+  import type {
+    FormCreateField,
+    FormCreateFieldOption,
+    FormCreateFieldRule,
+  } from '@/components/business/crm-form-create/types';
+
+  import { getContractStatusConfig, getOrderStatusConfig, testApprovalWebHook } from '@/api/modules';
+  import { quotationStatus } from '@/config/opportunity';
+  import { defaultWebHookConfig } from '@/config/process';
 
   defineOptions({
     name: 'AfterApprovalTab',
@@ -131,9 +291,16 @@
   });
 
   const { t } = useI18n();
+  const Message = useMessage();
   const activePostTab = ref<'pass' | 'reject'>('pass');
   const formFields = ref<FormCreateField[]>([]);
+  const contractStageOptions = ref<{ label: string; value: string }[]>([]);
+  const orderStageOptions = ref<{ label: string; value: string }[]>([]);
   const formRef = ref<FormInst | null>(null);
+  const webHookFormRef = ref<FormInst | null>(null);
+
+  // 用户修改成员/部门后还没保存，后端 optionMap 仍是旧回显；这里临时缓存当前行的新回显，避免切换 tab 后显示回旧值
+  const fieldValueOptionMap = shallowRef(new Map<ApprovalFieldUpdateConfig, SelectedUsersItem[]>());
 
   const postTabList = [
     {
@@ -151,20 +318,61 @@
     return activePostTab.value === 'pass' ? nodeConfig.value.passPostConfig : nodeConfig.value.rejectPostConfig;
   }
 
+  function renderOption({ node, option }: { node: VNode; option: SelectOption }): VNodeChild {
+    return h(
+      NTooltip,
+      {
+        delay: 300,
+      },
+      {
+        trigger: () => node,
+        default: () => option.label,
+      }
+    );
+  }
+
   function ensureActivePostConfig(): ApprovalPostConfig {
     if (activePostTab.value === 'pass') {
-      nodeConfig.value.passPostConfig ??= { fieldUpdateConfigs: [] };
+      nodeConfig.value.passPostConfig ??= { fieldUpdateConfigs: [], webHookConfig: { ...defaultWebHookConfig } };
       return nodeConfig.value.passPostConfig;
     }
 
-    nodeConfig.value.rejectPostConfig ??= { fieldUpdateConfigs: [] };
+    nodeConfig.value.rejectPostConfig ??= { fieldUpdateConfigs: [], webHookConfig: { ...defaultWebHookConfig } };
     return nodeConfig.value.rejectPostConfig;
   }
+
+  const activeWebhookConfig = computed<ApprovalWebhookConfig>(() => {
+    if (!props.readonly) {
+      const currentConfig = ensureActivePostConfig();
+
+      currentConfig.webHookConfig ??= { ...defaultWebHookConfig };
+      return currentConfig.webHookConfig;
+    }
+
+    const currentConfig = getCurrentPostConfig();
+
+    if (!currentConfig) {
+      return { ...defaultWebHookConfig };
+    }
+
+    return currentConfig.webHookConfig ?? { ...defaultWebHookConfig };
+  });
 
   const fieldUpdateRows = computed(() => getCurrentPostConfig()?.fieldUpdateConfigs ?? []);
   const postFormModel = computed(() => ({
     fieldUpdateConfigs: fieldUpdateRows.value,
+    webHookConfig: activeWebhookConfig.value,
   }));
+
+  const webhookHeadersPlaceholder = '{"Content-Type":"application/json"}';
+  const webhookBodyTemplate = `{
+  "orderNo": "\${报价.编号}",
+  "title": "\${报价.名称}",
+  "status": "approved"
+}`;
+  const webhookBodyPlaceholder = computed(
+    () => `${t('process.process.flow.webhookBodyPlaceholderPrefix')}\n${webhookBodyTemplate}`
+  );
 
   // 操作对象与批量更新字段保持一致，只保留当前表单里允许更新的字段
   const editableFields = computed(() => {
@@ -172,7 +380,7 @@
       props.formType as FormDesignKeyEnum
     );
 
-    return formFields.value.filter((field) => {
+    const customFields = formFields.value.filter((field) => {
       const baseCondition =
         ![
           FieldTypeEnum.DIVIDER,
@@ -188,6 +396,40 @@
 
       return isPoolForm ? baseCondition && field.businessKey !== 'owner' : baseCondition;
     });
+
+    const systemFieldMap: Partial<Record<FormDesignKeyEnum, FormCreateField[]>> = {
+      [FormDesignKeyEnum.OPPORTUNITY_QUOTATION]: [
+        {
+          id: 'invalid',
+          businessKey: 'invalid',
+          name: t('common.status'),
+          type: FieldTypeEnum.SELECT,
+          options: quotationStatus as unknown as FormCreateFieldOption[],
+        } as FormCreateField,
+      ],
+      [FormDesignKeyEnum.CONTRACT]: [
+        {
+          id: 'stage',
+          businessKey: 'stage',
+          name: t('contract.status'),
+          type: FieldTypeEnum.SELECT,
+          options: contractStageOptions.value,
+        } as FormCreateField,
+      ],
+      [FormDesignKeyEnum.ORDER]: [
+        {
+          id: 'stage',
+          businessKey: 'stage',
+          name: t('order.status'),
+          type: FieldTypeEnum.SELECT,
+          options: orderStageOptions.value,
+        } as FormCreateField,
+      ],
+    };
+
+    const systemFields = systemFieldMap[props.formType as FormDesignKeyEnum] || [];
+
+    return [...customFields, ...systemFields];
   });
 
   const editableFieldMap = computed(() => new Map(editableFields.value.map((field) => [field.id, field])));
@@ -246,6 +488,12 @@
   }
 
   function getFieldValueRuleType(field: FormCreateField) {
+    if (
+      [FieldTypeEnum.SELECT, FieldTypeEnum.RADIO].includes(field.type) &&
+      field.options?.some((item) => typeof item.value === 'boolean')
+    ) {
+      return 'boolean';
+    }
     return field.type === FieldTypeEnum.DATA_SOURCE ? 'string' : getRuleType(field);
   }
 
@@ -291,11 +539,6 @@
 
     currentField.rules = fullRules;
 
-    const initialOptions = props.optionMap?.[field.id] ?? [];
-    if (initialOptions.length) {
-      currentField.initialOptions = [...initialOptions];
-    }
-
     return currentField;
   }
 
@@ -303,12 +546,51 @@
     () => new Map(editableFields.value.map((field) => [field.id, buildFieldValueConfig(field)]))
   );
 
+  function isEmptyFieldValue(value: unknown) {
+    if (Array.isArray(value)) {
+      return !value.length;
+    }
+
+    return value === null || value === undefined || value === '';
+  }
+
+  function getFieldValueOptions(line: ApprovalFieldUpdateConfig) {
+    // 用户在页面上改过成员/部门后，优先用当前未保存的选择；否则再用后端 optionMap 回显
+    const cachedOptions = fieldValueOptionMap.value.get(line);
+    if (cachedOptions) {
+      return cachedOptions;
+    }
+
+    if (!line.fieldId) {
+      return [];
+    }
+
+    const selectedIds = new Set(
+      Array.isArray(line.fieldValue) ? line.fieldValue.map(String) : [String(line.fieldValue)]
+    );
+    // optionMap 是“字段 -> 全部回显项”的集合，同一字段可能同时包含通过/驳回 tab 的值，需要按当前行 fieldValue 过滤
+    return (props.optionMap?.[line.fieldId] ?? []).filter((item) => selectedIds.has(String(item.id)));
+  }
+
   function getFieldValueConfig(line: ApprovalFieldUpdateConfig) {
     if (!line.fieldId) {
       return null;
     }
 
-    return fieldValueConfigMap.value.get(line.fieldId) ?? null;
+    const fieldConfig = fieldValueConfigMap.value.get(line.fieldId);
+    if (!fieldConfig) {
+      return null;
+    }
+
+    const initialOptions = getFieldValueOptions(line);
+    if (initialOptions.length) {
+      return {
+        ...fieldConfig,
+        initialOptions: [...initialOptions],
+      };
+    }
+
+    return fieldConfig;
   }
 
   function isSupportedFieldValueType(fieldType: FieldTypeEnum): fieldType is SupportedFieldValueType {
@@ -339,12 +621,15 @@
     line.fieldValue = value;
   }
 
-  function isEmptyFieldValue(value: unknown) {
-    if (Array.isArray(value)) {
-      return !value.length;
-    }
+  function handleFieldValueOptionsUpdate(line: ApprovalFieldUpdateConfig, options: SelectedUsersItem[]) {
+    fieldValueOptionMap.value = new Map(fieldValueOptionMap.value).set(line, [...options]);
+  }
 
-    return value === null || value === undefined || value === '';
+  // 当前行切换字段时，旧字段的成员/部门回显不能继续沿用
+  function clearFieldValueOptions(line: ApprovalFieldUpdateConfig) {
+    const nextMap = new Map(fieldValueOptionMap.value);
+    nextMap.delete(line);
+    fieldValueOptionMap.value = nextMap;
   }
 
   function isFieldUpdateSwitchDisabled(line: ApprovalFieldUpdateConfig) {
@@ -357,6 +642,7 @@
     }
 
     line.fieldId = fieldId;
+    clearFieldValueOptions(line);
     const currentField = fieldId ? getCurrentField(fieldId) : null;
     line.fieldValue = currentField ? getInitialFieldValue(currentField) : '';
   }
@@ -388,6 +674,48 @@
     });
   }
 
+  function validateWebhookUrl(_rule: unknown, value: string) {
+    if (!activeWebhookConfig.value.webHookEnable || !value?.trim()) {
+      return true;
+    }
+
+    return validateHttpUrl(value) || new Error(t('process.process.flow.webhookUrlInvalid'));
+  }
+
+  function handleCancelWebhook() {
+    ensureActivePostConfig().webHookConfig = { ...defaultWebHookConfig };
+  }
+
+  const testLoading = ref(false);
+  function handleTestWebhook() {
+    if (props.readonly || !activeWebhookConfig.value.webHookEnable) {
+      return;
+    }
+    webHookFormRef.value?.validate(async (errors) => {
+      if (!errors) {
+        testLoading.value = true;
+        try {
+          await testApprovalWebHook(activeWebhookConfig.value);
+          Message.success(t('org.testConnectionSuccess'));
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.log(error);
+        } finally {
+          testLoading.value = false;
+        }
+      }
+    });
+  }
+
+  watch(
+    () => activePostTab.value,
+    (val) => {
+      if (val) {
+        webHookFormRef.value?.restoreValidation();
+      }
+    }
+  );
+
   function normalizeFieldUpdateConfigs(config?: ApprovalPostConfig) {
     if (props.readonly || !config) {
       return;
@@ -407,6 +735,42 @@
       selectedFieldIds.add(item.fieldId);
       return true;
     });
+
+    config.webHookConfig = {
+      ...defaultWebHookConfig,
+      ...config.webHookConfig,
+    };
+  }
+
+  function handleWebhookEnableChange(val: boolean) {
+    if (!val) {
+      ensureActivePostConfig().webHookConfig = { ...defaultWebHookConfig };
+    }
+  }
+
+  async function initStage() {
+    contractStageOptions.value = [];
+    orderStageOptions.value = [];
+    try {
+      if (props.formType === FormDesignKeyEnum.CONTRACT) {
+        const contractStageConfig = await getContractStatusConfig();
+        contractStageOptions.value = contractStageConfig.stageConfigList.map((item) => ({
+          label: item.name,
+          value: item.id,
+        }));
+      }
+
+      if (props.formType === FormDesignKeyEnum.ORDER) {
+        const orderStageConfig = await getOrderStatusConfig();
+        orderStageOptions.value = orderStageConfig.stageConfigList.map((item) => ({
+          label: item.name,
+          value: item.id,
+        }));
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.log(error);
+    }
   }
 
   async function loadFormFields() {
@@ -416,6 +780,7 @@
         getFormConfigApiMap[FormDesignKeyEnum.OPPORTUNITY_QUOTATION];
       const res = await api();
       formFields.value = res.fields;
+      initStage();
       if (!props.readonly) {
         normalizeFieldUpdateConfigs(nodeConfig.value.passPostConfig);
         normalizeFieldUpdateConfigs(nodeConfig.value.rejectPostConfig);

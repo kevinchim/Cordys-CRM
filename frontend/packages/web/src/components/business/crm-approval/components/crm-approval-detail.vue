@@ -17,7 +17,11 @@
         </div>
       </template>
       <template #2>
-        <div v-if="noApproval" class="flex h-full w-full items-center justify-center border-l border-[var(--text-n8)]">
+        <div
+          v-if="noApproval"
+          class="h-full w-full flex-1 border-l border-[var(--text-n8)] px-[16px] py-[24px] pb-[32px]"
+        >
+          <div class="mb-[8px] text-[16px] font-semibold">{{ t('crm.approval.record') }}</div>
           {{ t('crm.approval.historyTip') }}
         </div>
         <div v-else class="flex h-full w-full flex-col overflow-hidden border-l border-[var(--text-n8)]">
@@ -30,6 +34,7 @@
                 submitter: approvalInfo?.submitter,
                 submitTime: approvalInfo?.submitTime,
                 submitterId: approvalInfo?.submitterId,
+                comment: approvalInfo?.comment,
               }"
               :currentApprovalNode="currentApprovalNode"
               :currentApprovalNodeIndex="currentApprovalNodeIndex"
@@ -232,6 +237,7 @@
   const props = defineProps<{
     sourceId: string;
     formKey: FormDesignKeyEnum;
+    refreshKey?: number;
     layout?: 'horizontal' | 'vertical';
     approvalStatus: ProcessStatusEnum;
   }>();
@@ -718,6 +724,15 @@
     },
     {
       immediate: true,
+    }
+  );
+
+  watch(
+    () => props.refreshKey,
+    () => {
+      if (props.approvalStatus && ![ProcessStatusEnum.PENDING, ProcessStatusEnum.NONE].includes(props.approvalStatus)) {
+        initApprovalDetail();
+      }
     }
   );
 </script>

@@ -14,7 +14,12 @@
                 v-for="child in item.children"
                 class="task-item"
                 :class="{ 'task-item--active': activeTaskType === child.name }"
-                @click="activeTaskType = child.name"
+                @click="
+                  () => {
+                    activeTaskType = child.name;
+                    selectedKeys = [];
+                  }
+                "
               >
                 {{ child.title }}
                 <div v-if="item.name === 'pending'" class="task-count">{{ child.count }}</div>
@@ -86,32 +91,32 @@
     v-model:show="approvalVisible"
     :approval-type="approvalType"
     :approval-item-keys="selectedKeys"
-    :approval-flow-id="approvalFlowId"
+    :resource-type="resourceType"
     module="WORKBENCH"
     @approval-success="handleApproveSuccess"
   />
   <ContractDetailDrawer
     v-model:visible="contractDetailVisible"
     :source-id="activeResourceId"
-    :approvalFlowId="approvalFlowId"
+    :approvalTaskId="approvalTaskId"
     @refresh="handleApproveSuccess"
   />
   <QuotationDetailDrawer
     v-model:visible="quotationDetailVisible"
     :source-id="activeResourceId"
-    :approvalFlowId="approvalFlowId"
+    :approvalTaskId="approvalTaskId"
     @refresh="handleApproveSuccess"
   />
   <OrderDetailDrawer
     v-model:visible="orderDetailVisible"
     :source-id="activeResourceId"
-    :approvalFlowId="approvalFlowId"
+    :approvalTaskId="approvalTaskId"
     @refresh="handleApproveSuccess"
   />
   <InvoiceDetailDrawer
     v-model:visible="invoiceDetailVisible"
     :source-id="activeResourceId"
-    :approvalFlowId="approvalFlowId"
+    :approvalTaskId="approvalTaskId"
     @refresh="handleApproveSuccess"
   />
 </template>
@@ -346,12 +351,13 @@
   const quotationDetailVisible = ref(false);
   const orderDetailVisible = ref(false);
   const invoiceDetailVisible = ref(false);
-  const approvalFlowId = ref('');
-  function handleOpenDetail(resourceId: string, _approvalFlowId: string) {
+  const approvalTaskId = ref('');
+  const resourceType = ref('');
+  function handleOpenDetail(resourceId: string, _resourceType: string, _approvalTaskId: string) {
     activeResourceId.value = resourceId;
-    approvalFlowId.value = _approvalFlowId;
-    const [_, resourceType] = activeTaskType.value.split('-');
-    switch (resourceType) {
+    approvalTaskId.value = _approvalTaskId;
+    resourceType.value = _resourceType;
+    switch (_resourceType) {
       case ApprovalResourceTypeEnum.CONTRACT:
         contractDetailVisible.value = true;
         break;

@@ -248,7 +248,7 @@
     }
   }
 
-  const otherSaveParams = ref({
+  const otherSaveParams = ref<Record<string, any>>({
     id: '',
   });
 
@@ -290,6 +290,7 @@
     linkFormInfo.value = undefined;
     formCreateDrawerVisible.value = true;
   }
+
   function handleVoid(row: QuotationItem) {
     openModal({
       type: 'error',
@@ -311,26 +312,6 @@
   }
 
   const showDetailDrawer = ref(false);
-  function handleDelete(row: QuotationItem) {
-    openModal({
-      type: 'error',
-      title: t('opportunity.quotation.deleteTitleTip', { name: characterLimit(row.name) }),
-      content: t('opportunity.quotation.deleteContentTip'),
-      positiveText: t('common.confirmDelete'),
-      negativeText: t('common.cancel'),
-      onPositiveClick: async () => {
-        try {
-          await deleteQuotation(row.id);
-          Message.success(t('common.deleteSuccess'));
-          tableRemoveRefreshId.value = row.id;
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.error(error);
-        }
-      },
-    });
-  }
-
   function handleDownload(id: string) {
     openNewPage(FullPageEnum.FULL_PAGE_EXPORT_QUOTATION, { id });
   }
@@ -339,6 +320,7 @@
     initApprovalPermission,
     resolveRowOperation,
     enableApproval,
+    deleteExecute,
     hasApprovalScopedPermission,
     getApprovalActionTip,
   } = useApprovalOperation<QuotationItem>({
@@ -371,6 +353,26 @@
   const { reviewByFormResult, reviewByResourceId, revokeByResourceId } = useApprovalResourceAction({
     formKey: FormDesignKeyEnum.OPPORTUNITY_QUOTATION,
   });
+
+  function handleDelete(row: QuotationItem) {
+    openModal({
+      type: 'error',
+      title: t('opportunity.quotation.deleteTitleTip', { name: characterLimit(row.name) }),
+      content: t('opportunity.quotation.deleteContentTip'),
+      positiveText: deleteExecute.value ? t('crm.approval.confirmAndSubmitReview') : t('common.confirmDelete'),
+      negativeText: t('common.cancel'),
+      onPositiveClick: async () => {
+        try {
+          await deleteQuotation(row.id);
+          Message.success(deleteExecute.value ? t('common.reviewSuccess') : t('common.deleteSuccess'));
+          tableRemoveRefreshId.value = row.id;
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error(error);
+        }
+      },
+    });
+  }
 
   function handleApproval(row: QuotationItem) {
     if (!hasApprovalScopedPermission(row, ['OPPORTUNITY_QUOTATION:READ'])) {
@@ -658,6 +660,10 @@
   }
 
   function removeItemFromList(id: string) {
+    if (deleteExecute.value) {
+      searchData();
+      return;
+    }
     propsRes.value.data = propsRes.value.data.filter((item) => item.id !== id);
     propsRes.value.crmPagination = {
       ...propsRes.value.crmPagination,

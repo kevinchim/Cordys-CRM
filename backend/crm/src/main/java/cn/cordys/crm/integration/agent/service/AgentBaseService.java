@@ -36,7 +36,7 @@ import cn.cordys.crm.integration.agent.response.*;
 import cn.cordys.crm.integration.common.client.QrCodeClient;
 import cn.cordys.crm.integration.common.dto.ThirdConfigBaseDTO;
 import cn.cordys.crm.integration.common.request.MaxKBThirdConfigRequest;
-import cn.cordys.crm.integration.common.utils.HttpRequestUtil;
+import cn.cordys.crm.integration.common.utils.HttpClientUtils;
 import cn.cordys.crm.system.constants.OrganizationConfigConstants;
 import cn.cordys.crm.system.domain.OrganizationConfig;
 import cn.cordys.crm.system.domain.OrganizationConfigDetail;
@@ -315,7 +315,7 @@ public class AgentBaseService extends DashboardSortService {
             List<OptionDTO> options = extUserMapper.selectUserOptionByIds(ids);
             Map<String, String> userMap = options
                     .stream()
-                    .collect(Collectors.toMap(OptionDTO::getId, OptionDTO::getName));
+                    .collect(Collectors.toMap(OptionDTO::getIdAsString, OptionDTO::getName));
 
             Set<String> myCollects = new HashSet<>(extAgentCollectionMapper.getByUserId(userId));
 
@@ -557,7 +557,7 @@ public class AgentBaseService extends DashboardSortService {
     private List<OptionDTO> getApplication(String workspaceId, ThirdConfigBaseDTO<?> baseConfig) {
         MaxKBThirdConfigRequest config = JSON.MAPPER.convertValue(baseConfig.getConfig(), MaxKBThirdConfigRequest.class);
         String body = qrCodeClient.exchange(
-                HttpRequestUtil.urlTransfer(config.getMkAddress().concat(MaxKBApiPaths.APPLICATION), workspaceId),
+                HttpClientUtils.urlTransfer(config.getMkAddress().concat(MaxKBApiPaths.APPLICATION), workspaceId),
                 "Bearer " + config.getAppSecret(),
                 HttpHeaders.AUTHORIZATION,
                 MediaType.APPLICATION_JSON,
@@ -591,7 +591,7 @@ public class AgentBaseService extends DashboardSortService {
         ScriptResponse response = new ScriptResponse();
         List<ParameterDTO> parameters = new ArrayList<>();
         String accessToken = qrCodeClient.exchange(
-                HttpRequestUtil.urlTransfer(config.getMkAddress().concat(MaxKBApiPaths.ACCESS_TOKEN), request.getWorkspaceId(), request.getApplicationId()),
+                HttpClientUtils.urlTransfer(config.getMkAddress().concat(MaxKBApiPaths.ACCESS_TOKEN), request.getWorkspaceId(), request.getApplicationId()),
                 "Bearer " + config.getAppSecret(),
                 HttpHeaders.AUTHORIZATION,
                 MediaType.APPLICATION_JSON,
@@ -604,7 +604,7 @@ public class AgentBaseService extends DashboardSortService {
         response.setSrc(config.getMkAddress().concat("/chat/").concat(maxKBResponse.getData().getAccessToken()));
 
         String application = qrCodeClient.exchange(
-                HttpRequestUtil.urlTransfer(config.getMkAddress().concat(MaxKBApiPaths.APPLICATION_DETAIL), request.getWorkspaceId(), request.getApplicationId()),
+                HttpClientUtils.urlTransfer(config.getMkAddress().concat(MaxKBApiPaths.APPLICATION_DETAIL), request.getWorkspaceId(), request.getApplicationId()),
                 "Bearer " + config.getAppSecret(),
                 HttpHeaders.AUTHORIZATION,
                 MediaType.APPLICATION_JSON,

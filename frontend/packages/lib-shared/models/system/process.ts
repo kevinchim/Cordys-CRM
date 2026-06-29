@@ -6,6 +6,7 @@ import {
   ProcessStatusEnum,
   type ApprovalResourceTypeEnum,
 } from '@lib/shared/enums/process';
+import { RequestEnum } from '@lib/shared/enums/httpEnum';
 import type { SelectedUsersItem } from './module';
 import type { OptionDTO } from './business';
 import type { FilterForm } from '@cordys/web/src/components/pure/crm-advance-filter/type';
@@ -39,6 +40,7 @@ export interface ApprovalProcessItem extends BaseItem {
   formType: string;
   createExecute: boolean;
   updateExecute: boolean;
+  deleteExecute: boolean;
   enable: boolean;
   submitterCanRevoke: boolean;
   allowBatchProcess: boolean;
@@ -72,8 +74,18 @@ export interface ApprovalFieldUpdateConfig {
   enable: boolean;
 }
 
+export interface ApprovalWebhookConfig {
+  webHookDescribe: string;
+  webHookEnable: boolean;
+  webHookUrl: string;
+  webHookMethod: RequestEnum;
+  webHookHeader: string;
+  webHookBody: string;
+}
+
 export interface ApprovalPostConfig {
   fieldUpdateConfigs: ApprovalFieldUpdateConfig[];
+  webHookConfig?: ApprovalWebhookConfig;
 }
 
 // 后端审批流节点的基础结构
@@ -152,6 +164,7 @@ export interface BasicFormParams {
   description: string;
   createExecute: boolean; // 创建执行
   updateExecute: boolean; // 更新执行
+  deleteExecute: boolean; // 删除执行
 }
 
 // 更多设置参数
@@ -172,10 +185,16 @@ export interface ApprovalNodeLinkResponse {
   toNodeId: string;
 }
 
-export interface AddApprovalProcessParams extends BasicFormParams, MoreSettingsParams {
-  enable: boolean;
+export interface ApprovalFlowNodeConfig {
   nodes: ApprovalProcessNode[];
   links: ApprovalNodeLinkResponse[];
+}
+
+export interface AddApprovalProcessParams extends BasicFormParams, MoreSettingsParams {
+  enable: boolean;
+  createNodeConfig?: ApprovalFlowNodeConfig;
+  updateNodeConfig?: ApprovalFlowNodeConfig;
+  deleteNodeConfig?: ApprovalFlowNodeConfig;
 }
 
 export interface UpdateApprovalProcessParams extends AddApprovalProcessParams {
@@ -192,8 +211,9 @@ export interface ApprovalProcessDetail extends UpdateApprovalProcessParams {
 export interface ApprovalProcessForm {
   id: string;
   enable: boolean;
-  nodes: ApprovalProcessNode[];
-  links: ApprovalNodeLinkResponse[];
+  createNodeConfig?: ApprovalFlowNodeConfig;
+  updateNodeConfig?: ApprovalFlowNodeConfig;
+  deleteNodeConfig?: ApprovalFlowNodeConfig;
   basicConfig: BasicFormParams;
   moreConfig: MoreSettingsParams;
 }
@@ -280,6 +300,7 @@ export interface ApprovalDetail {
   submitAvatar: string;
   submitter: string;
   submitTime: number;
+  comment: string;
   result: string;
   approvalStatus: ProcessStatusEnum;
   currentNodeId: string;

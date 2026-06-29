@@ -136,7 +136,7 @@ public class ModuleFieldService {
         }
         String tableName = FORM_TABLE.get(request.getFormKey());
         if (StringUtils.isBlank(tableName)) {
-            throw new GenericException(Translator.get("module.form.illegal.unique.check"));
+            tableName = "custom_form_data";
         }
         String value = request.getValue();
         if (Strings.CI.equals(field.getType(), FieldType.PHONE.toString())) {
@@ -151,7 +151,11 @@ public class ModuleFieldService {
         } else {
             repeatName = commonMapper.checkFieldRepeatName(tableName, tableName + "_field", request.getId(), value, currentOrg);
         }
-        return FieldRepeatCheckResponse.builder().name(repeatName).repeat(StringUtils.isNotBlank(repeatName)).build();
+        boolean repeat = true;
+        if (StringUtils.isNotBlank(repeatName)) {
+            repeat = Strings.CS.equals(request.getValue(), repeatName);
+        }
+        return FieldRepeatCheckResponse.builder().name(repeatName).repeat(repeat).build();
     }
 
 	@SuppressWarnings("unchecked")

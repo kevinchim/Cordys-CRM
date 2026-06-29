@@ -30,6 +30,10 @@ export default {
   'crm.approval.confirmCancelApproval': 'Confirm Withdraw',
   'crm.approval.cancelApprovalSuccess': 'Approval Withdrawn',
   'crm.approval.submit': 'Submit Application',
+  'crm.approval.change': 'Change',
+  'crm.approval.changeDescription': 'Change Description',
+  'crm.approval.confirmChange': 'Save and submit for review',
+  'crm.approval.confirmAndSubmitReview': 'Confirm and Submit',
   'crm.approval.approver': 'Approver',
   'crm.approval.addSign': 'Add Signature',
   'crm.approval.addSignSuccess': 'Add Signature Successful',
@@ -39,5 +43,5 @@ export default {
   'crm.approval.fileLimitTip': 'You can add up to 10 attachments',
   'crm.approval.reviewDisabledTip': 'No active approval workflow was matched. Please contact the administrator.',
   'crm.approval.copyToTip': 'Copy to {count} people',
-  'crm.approval.historyTip': 'This contract is historical data; only the final approval status is retained.',
+  'crm.approval.historyTip': 'This resource is historical data; only the final approval status is retained.',
 };

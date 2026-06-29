@@ -29,6 +29,8 @@ import {
   DeleteOrderStatusUrl,
   DownloadOrderUrl,
   OrderStatisticUrl,
+  SaveAdvanceConfigUrl,
+  SwitchOrderCirculationTypeUrl,
 } from '@lib/shared/api/requrls/order';
 import type { FormDesignConfigDetailParams } from '@lib/shared/models/system/module';
 import type { CommonList, TableDraggedParams } from '@lib/shared/models/common';
@@ -44,7 +46,10 @@ import {
   OpportunityStageConfig,
   UpdateOpportunityStageRollbackParams,
   UpdateStageBaseParams,
+  type SaveCirculationConfigParams,
+  type UpdateStageParams,
 } from '@lib/shared/models/opportunity';
+import type { CirculationTypeEnum } from '@lib/shared/enums/opportunityEnum';
 
 export default function useOrderApi(CDR: CordysAxios) {
   // 列表
@@ -58,13 +63,13 @@ export default function useOrderApi(CDR: CordysAxios) {
   }
 
   // 订单详情
-  function getOrderDetail(id: string) {
-    return CDR.get<OrderItem>({ url: `${GetOrderDetailUrl}/${id}` });
+  function getOrderDetail(id: string, approvalTaskId?: string) {
+    return CDR.get<OrderItem>({ url: `${GetOrderDetailUrl}/${id}`, params: { approvalTaskId } });
   }
 
   // 详情快照
-  function getOrderDetailSnapshot(id: string) {
-    return CDR.get<OrderItem>({ url: `${OrderDetailSnapshotUrl}/${id}` });
+  function getOrderDetailSnapshot(id: string, approvalTaskId?: string) {
+    return CDR.get<OrderItem>({ url: `${OrderDetailSnapshotUrl}/${id}`, params: { approvalTaskId } });
   }
 
   // 新增订单
@@ -73,8 +78,8 @@ export default function useOrderApi(CDR: CordysAxios) {
   }
 
   // 更新订单
-  function updateOrder(data: UpdateOrderParams) {
-    return CDR.post({ url: UpdateOrderUrl, data });
+  function updateOrder(data: UpdateOrderParams, approvalTaskId?: string) {
+    return CDR.post({ url: UpdateOrderUrl, data, params: { approvalTaskId } });
   }
 
   // 批量更新订单
@@ -95,9 +100,10 @@ export default function useOrderApi(CDR: CordysAxios) {
   }
 
   // 获取表单配置快照
-  function getOrderFormSnapshotConfig(id?: string) {
+  function getOrderFormSnapshotConfig(id?: string, approvalTaskId?: string) {
     return CDR.get<FormDesignConfigDetailParams>({
       url: `${OrderFormConfigSnapshotUrl}/${id}`,
+      params: { approvalTaskId },
     });
   }
 
@@ -174,7 +180,7 @@ export default function useOrderApi(CDR: CordysAxios) {
   }
 
   // 更新阶段
-  function updateOrderStage(data: { id: string; stage: string }) {
+  function updateOrderStage(data: UpdateStageParams) {
     return CDR.post({ url: UpdateOrderStageUrl, data });
   }
 
@@ -186,6 +192,16 @@ export default function useOrderApi(CDR: CordysAxios) {
   // 订单统计
   function getOrderStatistic(data: TableQueryParams) {
     return CDR.post({ url: OrderStatisticUrl, data }, { ignoreCancelToken: true });
+  }
+
+  // 保存高级流转配置
+  function saveAdvanceConfig(data: SaveCirculationConfigParams) {
+    return CDR.post({ url: SaveAdvanceConfigUrl, data });
+  }
+
+  // 切换流转配置
+  function switchOrderCirculationType(type: CirculationTypeEnum) {
+    return CDR.get({ url: `${SwitchOrderCirculationTypeUrl}/${type}` });
   }
 
   return {
@@ -218,5 +234,7 @@ export default function useOrderApi(CDR: CordysAxios) {
     sortOrder,
     downloadOrder,
     getOrderStatistic,
+    switchOrderCirculationType,
+    saveAdvanceConfig,
   };
 }

@@ -256,5 +256,10 @@ public class PermissionConstants {
     public static final String DICT_MANAGE_UPDATE = "DICT_MANAGE:UPDATE";
     public static final String DICT_MANAGE_DELETE = "DICT_MANAGE:DELETE";
     /*------ end: DICT_MANAGE ------*/
+
+    /*------ start: CUSTOM_FORM ------*/
+    public static final String CUSTOM_FORM_READ = "CUSTOM_FORM:READ";
+    public static final String CUSTOM_FORM_ADD = "CUSTOM_FORM:ADD";
+    /*------ end: CUSTOM_FORM ------*/
 }
 

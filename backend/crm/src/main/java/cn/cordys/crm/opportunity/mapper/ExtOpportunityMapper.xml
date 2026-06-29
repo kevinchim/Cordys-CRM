@@ -55,7 +55,7 @@
             <foreach collection="dataPermission.deptIds" item="deptId" open="(" close=")" separator=",">
                 #{deptId}
             </foreach>
-            <if test="dataPermission.viewId == 'ALL'">
+            <if test="dataPermission.viewId != 'DEPARTMENT'">
                 or sys_organization_user.user_id = #{userId}
             </if>
             )
@@ -309,7 +309,7 @@
 
                     <otherwise>
                         CASE
-                        WHEN module_table.type = 'INPUT_NUMBER'
+                        WHEN module_table.type = 'INPUT_NUMBER' OR module_table.type = 'FORMULA'
                         THEN sort_table.field_value+0
                         END ${sortType},
                         sort_table.field_value ${sortType},
@@ -608,10 +608,7 @@
     </update>
 
     <update id="transfer">
-        update opportunity
-        set owner = #{owner}, stage = #{stage}, last_stage = Null, update_user = #{userId},
-            update_time = #{updateTime}, pos = #{nextPos}
-        where id = #{id}
+        update opportunity set owner = #{owner}, update_user = #{userId}, update_time = #{updateTime} where id = #{id}
     </update>
 
     <select id="getDetail" resultType="cn.cordys.crm.opportunity.dto.response.OpportunityDetailResponse">

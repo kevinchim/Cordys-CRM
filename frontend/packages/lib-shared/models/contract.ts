@@ -12,6 +12,7 @@ export interface ContractItem {
   customerName: string;
   amount: number;
   alreadyPayAmount: number;
+  approved?: boolean;
   approvalStatus: ProcessStatusEnum;
   stage: string;
   stageName: string;
@@ -173,6 +174,7 @@ export interface BusinessTitleItem {
 
 export interface SaveBusinessTitleParams {
   id?: string;
+  companyNumber?: string; // 公司编号
   name: string; // 公司名称
   identificationNumber: string; // 纳税人识别号
   openingBank: string; // 开户银行
@@ -207,6 +209,7 @@ export interface ContractInvoiceTableQueryParam extends TableQueryParams {
 export interface ContractInvoiceItem {
   id: string;
   contractId: string;
+  approved?: boolean;
   name: string;
   no: string;
   owner: string;

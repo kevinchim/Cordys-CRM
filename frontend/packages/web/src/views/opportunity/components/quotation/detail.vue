@@ -35,6 +35,7 @@
     <CrmApprovalDetail
       :form-key="FormDesignKeyEnum.OPPORTUNITY_QUOTATION"
       :source-id="props.sourceId"
+      :refresh-key="approvalDetailRefreshKey"
       :approval-status="detailInfo?.approvalStatus"
       @saveApproval="handleSaveApproval"
     >
@@ -48,6 +49,7 @@
           :fieldPermissions="fieldPermissions"
           :otherSaveParams="{
             updateType: 'approval',
+            approvalTaskId: props.approvalTaskId,
           }"
           label-width="auto"
           value-align="start"
@@ -58,6 +60,15 @@
       </template>
     </CrmApprovalDetail>
   </CrmDrawer>
+  <CrmFormCreateDrawer
+    v-model:visible="formCreateDrawerVisible"
+    :form-key="activeFormKey"
+    :source-id="props.sourceId"
+    :need-init-detail="needInitDetail"
+    :initial-source-name="initialSourceName"
+    :other-save-params="otherSaveParams"
+    @saved="handleFormCreateSaved"
+  />
 </template>
 
 <script setup lang="ts">
@@ -76,6 +87,7 @@
   import CrmTag from '@/components/pure/crm-tag/index.vue';
   import CrmApprovalDetail from '@/components/business/crm-approval/components/crm-approval-detail.vue';
   import CrmApprovalStatus from '@/components/business/crm-approval/components/crm-approval-status.vue';
+  import CrmFormCreateDrawer from '@/components/business/crm-form-create-drawer/index.vue';
   import CrmFormDescription from '@/components/business/crm-form-description/index.vue';
   import CrmOperationButton from '@/components/business/crm-operation-button/index.vue';
 
@@ -96,6 +108,7 @@
 
   const props = defineProps<{
     sourceId: string;
+    approvalTaskId?: string;
   }>();
 
   const emit = defineEmits<{
@@ -109,6 +122,7 @@
   });
 
   const refreshKey = ref(0);
+  const approvalDetailRefreshKey = ref(0);
   const title = ref('');
   const detailInfo = ref();
   const formViewSize = ref<FormViewSize>('large');
@@ -160,17 +174,58 @@
     });
   }
 
+  function handleReview() {
+    reviewByResourceId(props.sourceId, {
+      onSuccess: () => {
+        handleSavedRefresh();
+      },
+    });
+  }
+
+  const formCreateDrawerVisible = ref(false);
+  const initialSourceName = ref('');
+  const needInitDetail = ref(false);
+  const activeFormKey = ref(FormDesignKeyEnum.OPPORTUNITY_QUOTATION);
+  const otherSaveParams = ref<Record<string, any>>({
+    id: '',
+  });
+
+  function handleFormCreateSaved(_res?: any, isUpdateReview?: boolean) {
+    if (isUpdateReview) {
+      approvalDetailRefreshKey.value += 1;
+    }
+    refreshKey.value += 1;
+    emit('refresh');
+  }
+
+  const { initApprovalPermission, resolveRowOperation, deleteExecute, hasApprovalScopedPermission } =
+    useApprovalOperation<Record<string, any>>({
+      formType: FormDesignKeyEnum.OPPORTUNITY_QUOTATION,
+      dataActionMap: quotationDataActionMap,
+      isDetail: true,
+      identityResolver: {
+        isApplicant: (row, currentUserId) => row.createUser === currentUserId,
+      },
+      shouldUseRolePermissionOnly: (row) => row.invalid,
+      specialActionFilter: (row, actionKeys) => {
+        if (row.invalid) {
+          return actionKeys.filter((key) => key === 'delete');
+        }
+        return actionKeys;
+      },
+    });
+
   function handleDelete() {
     openModal({
       type: 'error',
       title: t('opportunity.quotation.deleteTitleTip', { name: characterLimit(detailInfo.value.name ?? '') }),
       content: t('opportunity.quotation.deleteContentTip'),
-      positiveText: t('common.confirmDelete'),
+      positiveText: deleteExecute.value ? t('crm.approval.confirmAndSubmitReview') : t('common.confirmDelete'),
       negativeText: t('common.cancel'),
       onPositiveClick: async () => {
         try {
           await deleteQuotation(props.sourceId);
-          Message.success(t('common.deleteSuccess'));
+          Message.success(deleteExecute.value ? t('common.reviewSuccess') : t('common.deleteSuccess'));
           visible.value = false;
           emit('remove');
         } catch (error) {
@@ -181,19 +236,13 @@
     });
   }
 
-  function handleReview() {
-    reviewByResourceId(props.sourceId, {
-      onSuccess: () => {
-        handleSavedRefresh();
-      },
-    });
-  }
-
   function handleSelect(key: string) {
     switch (key) {
       case 'edit':
-        emit('edit', props.sourceId);
-        visible.value = false;
+        activeFormKey.value = FormDesignKeyEnum.OPPORTUNITY_QUOTATION;
+        needInitDetail.value = true;
+        otherSaveParams.value.id = props.sourceId;
+        formCreateDrawerVisible.value = true;
         break;
       case 'review':
         handleReview();
@@ -214,24 +263,6 @@
         break;
     }
   }
-  const { initApprovalPermission, resolveRowOperation, hasApprovalScopedPermission } = useApprovalOperation<
-    Record<string, any>
-  >({
-    formType: FormDesignKeyEnum.OPPORTUNITY_QUOTATION,
-    dataActionMap: quotationDataActionMap,
-    isDetail: true,
-    identityResolver: {
-      isApplicant: (row, currentUserId) => row.createUser === currentUserId,
-    },
-    shouldUseRolePermissionOnly: (row) => row.invalid,
-    specialActionFilter: (row, actionKeys) => {
-      if (row.invalid) {
-        return actionKeys.filter((key) => key === 'delete');
-      }
-      return actionKeys;
-    },
-  });
-
   const detailActions = computed<{
     groupList: ActionsItem[];
     moreList: ActionsItem[];

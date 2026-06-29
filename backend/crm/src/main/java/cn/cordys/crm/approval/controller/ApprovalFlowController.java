@@ -2,7 +2,9 @@ package cn.cordys.crm.approval.controller;
 
 import cn.cordys.common.constants.PermissionConstants;
 import cn.cordys.common.pager.Pager;
+import cn.cordys.common.utils.ConditionFilterUtils;
 import cn.cordys.context.OrganizationContext;
+import cn.cordys.crm.approval.dto.WebHookConfig;
 import cn.cordys.crm.approval.dto.request.ApprovalFlowAddRequest;
 import cn.cordys.crm.approval.dto.request.ApprovalFlowPageRequest;
 import cn.cordys.crm.approval.dto.request.ApprovalFlowUpdateRequest;
@@ -36,6 +38,7 @@ public class ApprovalFlowController {
     @RequiresPermissions(PermissionConstants.PROCESS_SETTING_READ)
     @Operation(summary = "审批流列表")
     public Pager<List<ApprovalFlowListResponse>> list(@Validated @RequestBody ApprovalFlowPageRequest request) {
+        ConditionFilterUtils.parseCondition(request);
         return approvalFlowService.list(request, OrganizationContext.getOrganizationId());
     }
 
@@ -84,5 +87,12 @@ public class ApprovalFlowController {
     @Operation(summary = "根据表单类型获取审批流信息")
     public ApprovalFlowByFormTypeResponse getByFormType(@PathVariable("formType") String formType) {
         return approvalFlowService.getByFormType(formType, OrganizationContext.getOrganizationId());
+    }
+
+
+    @PostMapping("/webhook/test")
+    @Operation(summary = "webhook-测试连接")
+    public void verifyEmailConnection(@Validated @RequestBody WebHookConfig webHookConfig) {
+        approvalFlowService.testConnection(webHookConfig);
     }
 }
