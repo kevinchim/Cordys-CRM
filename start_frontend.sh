@@ -40,17 +40,23 @@ echo "  ✅ 前端源码同步完成"
 
 # 3. 停止旧进程
 echo "[3/4] 停止旧前端进程..."
-docker exec ${CONTAINER} bash -c "
-  pkill -f 'vite' 2>/dev/null || true
-  pkill -f 'esbuild' 2>/dev/null || true
-"
-sleep 2
-# 强制清理僵尸进程
-docker exec ${CONTAINER} bash -c "
-  pkill -9 -f 'vite' 2>/dev/null || true
-  pkill -9 -f 'esbuild' 2>/dev/null || true
-"
-echo "  ✅ 旧进程已清理"
+NODE_PIDS=$(docker exec ${CONTAINER} bash -c "ps aux | grep -E '(vite|esbuild)' | grep -v grep | grep -v defunct | awk '{print \$2}'" 2>/dev/null)
+if [ -n "$NODE_PIDS" ]; then
+    echo "  发现旧 node 进程: $(echo $NODE_PIDS | tr '\n' ' ')"
+    for pid in $NODE_PIDS; do
+        docker exec ${CONTAINER} kill "$pid" 2>/dev/null || true
+    done
+    sleep 2
+    REMAINING=$(docker exec ${CONTAINER} bash -c "ps aux | grep -E '(vite|esbuild)' | grep -v grep | grep -v defunct | awk '{print \$2}'" 2>/dev/null)
+    if [ -n "$REMAINING" ]; then
+        for pid in $REMAINING; do
+            docker exec ${CONTAINER} kill -9 "$pid" 2>/dev/null || true
+        done
+    fi
+    echo "  ✅ 旧进程已清理"
+else
+    echo "  ✅ 无运行中的旧进程"
+fi
 
 # 4. 启动 Vite dev server
 echo "[4/4] 启动 Vite 开发服务器..."

@@ -82,23 +82,37 @@ echo "  ✅ 配置文件已生成: ${CONFIG_FILE}"
 
 # 4. 停止旧进程
 echo "[4/5] 停止旧后端进程..."
-docker exec ${CONTAINER} bash -c "pkill -f 'crm-main.jar' 2>/dev/null || true; pkill -f 'spring.config.location' 2>/dev/null || true"
-sleep 2
-# 强制清理僵尸进程
-docker exec ${CONTAINER} bash -c "pkill -9 -f 'crm-main.jar' 2>/dev/null || true"
-echo "  ✅ 旧进程已清理"
+# 找出并停止所有 Java 进程
+JAVA_PIDS=$(docker exec ${CONTAINER} bash -c "ps aux | grep 'java' | grep -v grep | grep -v defunct | awk '{print \$2}'" 2>/dev/null)
+if [ -n "$JAVA_PIDS" ]; then
+    echo "  发现旧 Java 进程: $(echo $JAVA_PIDS | tr '\n' ' ')"
+    for pid in $JAVA_PIDS; do
+        docker exec ${CONTAINER} kill "$pid" 2>/dev/null || true
+    done
+    sleep 2
+    # 强制杀掉仍存在的
+    REMAINING=$(docker exec ${CONTAINER} bash -c "ps aux | grep 'java' | grep -v grep | grep -v defunct | awk '{print \$2}'" 2>/dev/null)
+    if [ -n "$REMAINING" ]; then
+        for pid in $REMAINING; do
+            docker exec ${CONTAINER} kill -9 "$pid" 2>/dev/null || true
+        done
+    fi
+    echo "  ✅ 旧进程已清理"
+else
+    echo "  ✅ 无运行中的旧进程"
+fi
 
 # 5. 启动应用
 echo "[5/5] 启动 Spring Boot 应用..."
-JAR_PATH="${SRC_DIR}/backend/crm/target/crm-main.jar"
-FRAMEWORK_JAR="${SRC_DIR}/backend/framework/target/framework-main.jar"
+JAR_PATH=$(docker exec ${CONTAINER} bash -c "ls ${SRC_DIR}/backend/app/target/*.jar 2>/dev/null | head -1")
 
 # 先检查 JAR 是否存在
-if ! docker exec ${CONTAINER} test -f ${JAR_PATH}; then
-    echo "  ❌ JAR 文件不存在: ${JAR_PATH}"
+if [ -z "$JAR_PATH" ]; then
+    echo "  ❌ JAR 文件不存在: ${SRC_DIR}/backend/app/target/"
     echo "  请先运行 ./rebuild_backend.sh 编译后端"
     exit 1
 fi
+echo "  使用 JAR: ${JAR_PATH}"
 
 docker exec -d ${CONTAINER} bash -c "
   nohup java \

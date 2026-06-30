@@ -39,16 +39,18 @@ docker exec ${CONTAINER} bash -c "
 "
 echo "  ✅ framework 编译完成"
 
-# 4. 编译 crm 模块 (主应用)
-echo "[4/4] 编译 crm 模块 (主应用)..."
+# 4. 编译 app 模块 (Spring Boot 可执行 JAR)
+echo "[4/4] 编译 app 模块 (Spring Boot 可执行 JAR)..."
 docker exec ${CONTAINER} bash -c "
   cd ${SRC_DIR} && \
-  ./mvnw install -pl crm -DskipTests -DskipAntRunForJenkins -q --file backend/pom.xml 2>&1
+  ./mvnw install -pl app -DskipTests -DskipAntRunForJenkins -q --file backend/pom.xml 2>&1
 "
 
 # 验证产物
-JAR_SIZE=$(docker exec ${CONTAINER} ls -lh ${SRC_DIR}/backend/crm/target/crm-main.jar 2>/dev/null | awk '{print $5}')
-echo "  ✅ crm 编译完成 (crm-main.jar: ${JAR_SIZE})"
+JAR_PATH="${SRC_DIR}/backend/app/target"
+JAR_FILE=$(docker exec ${CONTAINER} bash -c "ls ${JAR_PATH}/*.jar 2>/dev/null | head -1")
+JAR_SIZE=$(docker exec ${CONTAINER} ls -lh "${JAR_FILE}" 2>/dev/null | awk '{print $5}')
+echo "  ✅ app 编译完成 (${JAR_FILE##*/}: ${JAR_SIZE})"
 
 echo ""
 echo "=============================================="
