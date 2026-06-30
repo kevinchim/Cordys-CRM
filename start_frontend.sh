@@ -62,6 +62,7 @@ fi
 echo "[4/4] 启动 Vite 开发服务器..."
 docker exec -d ${CONTAINER} bash -c "
   cd ${WEB_PACKAGE} && \
+  export VITE_DEV_DOMAIN=http://cordys-backend:8081 && \
   nohup pnpm dev --host 0.0.0.0 --port ${VITE_PORT} > /tmp/cordys-frontend.log 2>&1 &
 "
 
