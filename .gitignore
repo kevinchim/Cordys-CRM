@@ -91,3 +91,8 @@ Deploy/*.sql
 
 # Documents (large binaries)
 *.docx
+
+# pnpm store (generated at runtime)
+frontend/.pnpm-store
+frontend/node_modules
+frontend/**/node_modules
