@@ -78,3 +78,16 @@ qywx.json
 
 # Claude Code
 .claude
+
+############################
+# Sensitive / Local Files
+############################
+
+# Deploy secrets
+Deploy/deploy.conf
+Deploy/*.sql.gz
+Deploy/*.sql
+!Deploy/reset_database.sql
+
+# Documents (large binaries)
+*.docx
