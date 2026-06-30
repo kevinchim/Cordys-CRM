@@ -2,12 +2,12 @@
 # ============================================================
 # CordysCRM - 重新编译后端
 # 使用 cordys-backend 容器 (maven:3.9-eclipse-temurin-21)
+# 项目目录已挂载到容器内 /workspace
 # ============================================================
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONTAINER="cordys-backend"
-SRC_DIR="/tmp/CordysCRM-1.7.2"
+SRC_DIR="/workspace"
 
 echo "=============================================="
 echo "  CordysCRM - 后端重新编译"
@@ -15,40 +15,33 @@ echo "=============================================="
 echo ""
 
 # 1. 检查容器
-echo "[1/4] 检查构建容器 ${CONTAINER}..."
+echo "[1/5] 检查构建容器 ${CONTAINER}..."
 if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
-    echo "  ❌ 容器 ${CONTAINER} 未运行！请先启动 cordys-backend 容器。"
+    echo "  ❌ 容器 ${CONTAINER} 未运行！"
     exit 1
 fi
-echo "  ✅ 容器 ${CONTAINER} 运行中"
+echo "  ✅ 容器 ${CONTAINER} 运行中（项目目录已挂载到 /workspace）"
 
-# 2. 同步源码
-echo "[2/4] 同步项目源码到容器..."
-docker cp "${SCRIPT_DIR}/backend" ${CONTAINER}:${SRC_DIR}/backend 2>/dev/null || true
-docker cp "${SCRIPT_DIR}/pom.xml" ${CONTAINER}:${SRC_DIR}/pom.xml
-docker cp "${SCRIPT_DIR}/mvnw" ${CONTAINER}:${SRC_DIR}/mvnw
-docker cp "${SCRIPT_DIR}/.mvn" ${CONTAINER}:${SRC_DIR}/.mvn
-echo "  ✅ 源码同步完成"
-
-# 3. 编译 framework 模块
-echo "[3/4] 编译 framework 模块..."
+# 2. 编译 parent POM (root + backend)
+echo "[2/4] 编译 parent POM..."
 docker exec ${CONTAINER} bash -c "
+  export MAVEN_OPTS='-Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true' && \
   cd ${SRC_DIR} && \
   ./mvnw install -N -DskipTests -q 2>&1 && \
-  ./mvnw install -pl framework -DskipTests -q --file backend/pom.xml 2>&1
+  ./mvnw install -N -DskipTests -q --file backend/pom.xml 2>&1
 "
-echo "  ✅ framework 编译完成"
+echo "  ✅ parent POM 安装完成"
 
-# 4. 编译 app 模块 (Spring Boot 可执行 JAR)
-echo "[4/4] 编译 app 模块 (Spring Boot 可执行 JAR)..."
+# 3. 编译所有模块 (framework → crm → app)
+echo "[3/4] 编译 framework → crm → app 模块..."
 docker exec ${CONTAINER} bash -c "
-  cd ${SRC_DIR} && \
-  ./mvnw install -pl app -DskipTests -DskipAntRunForJenkins -q --file backend/pom.xml 2>&1
+  export MAVEN_OPTS='-Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true -Dmaven.wagon.http.ssl.ignore.validity.dates=true' && \
+  cd ${SRC_DIR} && ./mvnw install -pl framework,crm,app -DskipTests -DskipAntRunForJenkins -q --file backend/pom.xml 2>&1
 "
+echo "  ✅ 所有模块编译完成"
 
 # 验证产物
-JAR_PATH="${SRC_DIR}/backend/app/target"
-JAR_FILE=$(docker exec ${CONTAINER} bash -c "ls ${JAR_PATH}/*.jar 2>/dev/null | head -1")
+JAR_FILE=$(docker exec ${CONTAINER} bash -c "ls ${SRC_DIR}/backend/app/target/*.jar 2>/dev/null | head -1")
 JAR_SIZE=$(docker exec ${CONTAINER} ls -lh "${JAR_FILE}" 2>/dev/null | awk '{print $5}')
 echo "  ✅ app 编译完成 (${JAR_FILE##*/}: ${JAR_SIZE})"
 

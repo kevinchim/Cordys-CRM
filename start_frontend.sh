@@ -2,15 +2,15 @@
 # ============================================================
 # CordysCRM - 启动前端开发服务器
 # 在 cordys-frontend 容器中启动 Vite dev server
+# 项目 frontend/ 目录已挂载到容器内 /workspace
 # ============================================================
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONTAINER="cordys-frontend"
-SRC_DIR="/tmp/frontend-1.7.2"
+SRC_DIR="/workspace"
+WEB_PACKAGE="${SRC_DIR}/packages/web"
 VITE_PORT="5173"
 HOST_PORT="18083"
-WEB_PACKAGE="${SRC_DIR}/packages/web"
 
 echo "=============================================="
 echo "  CordysCRM - 启动前端开发服务器"
@@ -23,20 +23,12 @@ if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
     echo "  ❌ 容器 ${CONTAINER} 未运行！"
     exit 1
 fi
-echo "  ✅ 容器 ${CONTAINER} 运行中"
+echo "  ✅ 容器 ${CONTAINER} 运行中（frontend/ 目录已挂载到 /workspace）"
 
-# 2. 同步前端源码
-echo "[2/4] 同步前端源码..."
-docker exec ${CONTAINER} bash -c "mkdir -p ${SRC_DIR}" 2>/dev/null || true
-docker cp "${SCRIPT_DIR}/frontend/package.json" ${CONTAINER}:${SRC_DIR}/
-docker cp "${SCRIPT_DIR}/frontend/pnpm-workspace.yaml" ${CONTAINER}:${SRC_DIR}/ 2>/dev/null || true
-docker cp "${SCRIPT_DIR}/frontend/pnpm-lock.yaml" ${CONTAINER}:${SRC_DIR}/ 2>/dev/null || true
-docker cp "${SCRIPT_DIR}/frontend/.npmrc" ${CONTAINER}:${SRC_DIR}/ 2>/dev/null || true
-docker cp "${SCRIPT_DIR}/frontend/packages" ${CONTAINER}:${SRC_DIR}/
-
-# 确保 install dependencies
+# 2. 安装依赖
+echo "[2/4] 安装前端依赖..."
 docker exec ${CONTAINER} bash -c "cd ${SRC_DIR} && pnpm i -w --no-frozen-lockfile 2>&1 | tail -3"
-echo "  ✅ 前端源码同步完成"
+echo "  ✅ 依赖安装完成"
 
 # 3. 停止旧进程
 echo "[3/4] 停止旧前端进程..."
@@ -70,7 +62,7 @@ docker exec -d ${CONTAINER} bash -c "
 echo "  等待 Vite 启动..."
 for i in $(seq 1 20); do
     sleep 2
-    if docker exec ${CONTAINER} bash -c "grep -q 'Local:' /tmp/cordys-frontend.log 2>/dev/null" 2>/dev/null; then
+    if docker exec ${CONTAINER} bash -c "grep -qE 'Local:|Network:' /tmp/cordys-frontend.log 2>/dev/null" 2>/dev/null; then
         echo "  ✅ Vite 启动成功!"
         break
     fi

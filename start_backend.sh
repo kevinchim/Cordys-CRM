@@ -3,12 +3,12 @@
 # CordysCRM - 启动后端服务
 # 在 cordys-backend 容器中启动 Spring Boot 应用
 # 使用 cordys-mysql (cordys-crm-1.7.0) 和 cordys-redis
+# 项目目录已挂载到容器内 /workspace
 # ============================================================
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONTAINER="cordys-backend"
-SRC_DIR="/tmp/CordysCRM-1.7.2"
+SRC_DIR="/workspace"
 APP_PORT="8081"
 HOST_PORT="15173"
 CONFIG_FILE="/tmp/cordys-crm-app.properties"
@@ -19,12 +19,12 @@ echo "=============================================="
 echo ""
 
 # 1. 检查容器
-echo "[1/5] 检查构建容器 ${CONTAINER}..."
+echo "[1/5] 检查容器 ${CONTAINER}..."
 if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
     echo "  ❌ 容器 ${CONTAINER} 未运行！"
     exit 1
 fi
-echo "  ✅ 容器 ${CONTAINER} 运行中"
+echo "  ✅ 容器 ${CONTAINER} 运行中（项目目录 /workspace）"
 
 # 2. 检查 MySQL 和 Redis
 echo "[2/5] 检查 MySQL / Redis 容器..."
@@ -46,11 +46,12 @@ spring.datasource.username=root
 spring.datasource.password=root
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 
-# ====== Redis 配置 (使用外部 Redis) ======
+# ====== Redis 配置 (使用外部 Redis, 无密码) ======
 redis.embedded.enabled=false
 spring.data.redis.host=cordys-redis
 spring.data.redis.port=6379
 spring.data.redis.password=
+spring.redis.redisson.file=file:/opt/cordys/conf/redisson.yml
 
 # ====== Flyway 数据库迁移 ======
 spring.flyway.enabled=true
@@ -65,9 +66,6 @@ spring.session.redis.repository-type=indexed
 # ====== 日志 ======
 logger.sql.level=info
 
-# ====== MCP Server (可选) ======
-mcp.embedded.enabled=false
-
 # ====== 应用端口 ======
 server.port=${APP_PORT}
 
@@ -78,11 +76,18 @@ management.endpoints.enabled-by-default=false
 springdoc.api-docs.groups.enabled=true
 dashboard.whitelist.enabled=false
 PROPEOF"
-echo "  ✅ 配置文件已生成: ${CONFIG_FILE}"
+
+# Redisson 配置（必须使用 YAML 指定 null password，否则会发 AUTH 导致连接失败）
+docker exec ${CONTAINER} bash -c "cat > /opt/cordys/conf/redisson.yml << 'EOF'
+singleServerConfig:
+  address: 'redis://cordys-redis:6379'
+  password: null
+  database: 0
+EOF"
+echo "  ✅ 配置文件已生成 (含 redisson.yml)"
 
 # 4. 停止旧进程
 echo "[4/5] 停止旧后端进程..."
-# 找出并停止所有 Java 进程
 JAVA_PIDS=$(docker exec ${CONTAINER} bash -c "ps aux | grep 'java' | grep -v grep | grep -v defunct | awk '{print \$2}'" 2>/dev/null)
 if [ -n "$JAVA_PIDS" ]; then
     echo "  发现旧 Java 进程: $(echo $JAVA_PIDS | tr '\n' ' ')"
@@ -90,7 +95,6 @@ if [ -n "$JAVA_PIDS" ]; then
         docker exec ${CONTAINER} kill "$pid" 2>/dev/null || true
     done
     sleep 2
-    # 强制杀掉仍存在的
     REMAINING=$(docker exec ${CONTAINER} bash -c "ps aux | grep 'java' | grep -v grep | grep -v defunct | awk '{print \$2}'" 2>/dev/null)
     if [ -n "$REMAINING" ]; then
         for pid in $REMAINING; do
@@ -106,7 +110,6 @@ fi
 echo "[5/5] 启动 Spring Boot 应用..."
 JAR_PATH=$(docker exec ${CONTAINER} bash -c "ls ${SRC_DIR}/backend/app/target/*.jar 2>/dev/null | head -1")
 
-# 先检查 JAR 是否存在
 if [ -z "$JAR_PATH" ]; then
     echo "  ❌ JAR 文件不存在: ${SRC_DIR}/backend/app/target/"
     echo "  请先运行 ./rebuild_backend.sh 编译后端"

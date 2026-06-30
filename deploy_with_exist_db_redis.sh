@@ -93,15 +93,7 @@ echo ""
 info "Step 3/5: 同步前端源码并安装依赖..."
 echo ""
 
-FRONTEND_SRC="/tmp/frontend-1.7.2"
-docker exec ${FRONTEND_CT} bash -c "mkdir -p ${FRONTEND_SRC}" 2>/dev/null || true
-
-echo "  同步前端文件..."
-docker cp "${SCRIPT_DIR}/frontend/package.json" ${FRONTEND_CT}:${FRONTEND_SRC}/
-docker cp "${SCRIPT_DIR}/frontend/pnpm-workspace.yaml" ${FRONTEND_CT}:${FRONTEND_SRC}/ 2>/dev/null || true
-docker cp "${SCRIPT_DIR}/frontend/pnpm-lock.yaml" ${FRONTEND_CT}:${FRONTEND_SRC}/ 2>/dev/null || true
-docker cp "${SCRIPT_DIR}/frontend/.npmrc" ${FRONTEND_CT}:${FRONTEND_SRC}/ 2>/dev/null || true
-docker cp "${SCRIPT_DIR}/frontend/packages" ${FRONTEND_CT}:${FRONTEND_SRC}/
+FRONTEND_SRC="/workspace"
 
 echo "  安装依赖..."
 docker exec ${FRONTEND_CT} bash -c "cd ${FRONTEND_SRC} && pnpm i -w --no-frozen-lockfile 2>&1 | tail -5"

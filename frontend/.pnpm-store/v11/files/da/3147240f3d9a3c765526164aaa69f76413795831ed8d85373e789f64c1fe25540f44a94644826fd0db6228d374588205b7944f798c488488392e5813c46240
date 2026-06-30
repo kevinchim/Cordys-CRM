@@ -1,0 +1,27 @@
+{
+    "name": "@types/postcss-pxtorem",
+    "version": "6.1.0",
+    "description": "TypeScript definitions for postcss-pxtorem",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/postcss-pxtorem",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Steven Bassett",
+            "githubUsername": "bassettsj",
+            "url": "https://github.com/bassettsj"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/postcss-pxtorem"
+    },
+    "scripts": {},
+    "dependencies": {
+        "postcss": "^8.2.6"
+    },
+    "typesPublisherContentHash": "4c76a6ebf47fb549523c1c7a8d37b0d4887d1074882d9509a352810befa5e317",
+    "typeScriptVersion": "4.8"
+}
