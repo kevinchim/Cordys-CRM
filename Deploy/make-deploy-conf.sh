@@ -59,7 +59,7 @@ REDIS_HOST_PORT=6379
 # --- Docker 网络 ---
 NETWORK_NAME=$DETECT_NET
 
-# --- 基础镜像（仅用于容器启动参考，实际 JAR 由编译生成） ---
+# --- 基础镜像（提供 Java 运行时 + 启动脚本，实际代码 JAR 由 Maven 编译挂载覆盖） ---
 BASE_IMAGE=1panel/cordys-crm:v1.7.0
 
 # --- 部署目录（应用日志/文件/配置，不含数据库） ---
