@@ -467,8 +467,9 @@ public class CustomerPoolService {
      */
     public Map<List<String>, CustomerPool> getOwnersBestMatchPoolMap(List<CustomerPool> pools) {
         var poolMap = new HashMap<List<String>, CustomerPool>(4);
-        pools.sort(Comparator.comparing(CustomerPool::getCreateTime).reversed());
-        for (CustomerPool pool : pools) {
+        List<CustomerPool> sortedPools = new ArrayList<>(pools);
+        sortedPools.sort(Comparator.comparing(CustomerPool::getCreateTime).reversed());
+        for (CustomerPool pool : sortedPools) {
             List<String> exitOwnerIds = poolMap.keySet().stream().flatMap(List::stream).toList();
             List<String> scopeIds = JSON.parseArray(pool.getScopeId(), String.class);
             List<String> ownerIds = userExtendService.getScopeOwnerIds(scopeIds, pool.getOrganizationId());

@@ -8,11 +8,13 @@ import cn.cordys.aspectj.dto.LogDTO;
 import cn.cordys.common.constants.BusinessModuleField;
 import cn.cordys.common.constants.FormKey;
 import cn.cordys.common.constants.InternalUser;
+import cn.cordys.common.constants.PermissionConstants;
 import cn.cordys.common.dto.ChartAnalysisDbRequest;
 import cn.cordys.common.dto.DeptDataPermissionDTO;
 import cn.cordys.common.dto.chart.ChartResult;
 import cn.cordys.common.exception.GenericException;
 import cn.cordys.common.service.BaseChartService;
+import cn.cordys.common.service.DataScopeService;
 import cn.cordys.common.uid.IDGenerator;
 import cn.cordys.common.util.*;
 import cn.cordys.common.utils.ConditionFilterUtils;
@@ -94,6 +96,8 @@ public class PoolCustomerService {
     private CustomerContactService customerContactService;
     @Resource
     private CustomerFieldService customerFieldService;
+    @Resource
+    private DataScopeService dataScopeService;
     @Resource
     private BaseChartService baseChartService;
     @Resource
@@ -528,6 +532,13 @@ public class PoolCustomerService {
      * @return 已分配的客户ID列表，null表示无需限制
      */
     public List<String> getOrAllocateCustomerIds(String poolId, String userId, CustomerPoolPickRule pickRule, String orgId) {
+        // 拥有全部数据权限的用户不受公海池查看数量限制
+        DeptDataPermissionDTO deptDataPermission = dataScopeService.getDeptDataPermission(
+                userId, orgId, PermissionConstants.CUSTOMER_MANAGEMENT_POOL_READ);
+        if (deptDataPermission.getAll()) {
+            // 全部数据权限豁免查看限制
+            return null;
+        }
         String periodType = determinePeriodType(pickRule);
         if (periodType == null) {
             return null;

@@ -11,7 +11,7 @@
         >
           <template #header-extra>
             <n-button
-              v-permission="['MODULE_SETTING:UPDATE']"
+              v-permission="['DICT_MANAGE:ADD']"
               size="small"
               type="primary"
               @click="openCatDrawer()"
@@ -44,7 +44,7 @@
                 </div>
                 <div>
                   <n-button
-                    v-permission="['MODULE_SETTING:UPDATE']"
+                    v-permission="['DICT_MANAGE:UPDATE']"
                     text
                     size="tiny"
                     @click.stop="openCatDrawer(cat)"
@@ -53,7 +53,7 @@
                   <n-popconfirm @positive-click="delCat(cat.id)">
                     <template #trigger>
                       <n-button
-                        v-permission="['MODULE_SETTING:UPDATE']"
+                        v-permission="['DICT_MANAGE:DELETE']"
                         text
                         size="tiny"
                         type="error"
@@ -86,7 +86,7 @@
         >
           <template v-if="selCat" #header-extra>
             <n-button
-              v-permission="['MODULE_SETTING:UPDATE']"
+              v-permission="['DICT_MANAGE:ADD']"
               size="small"
               type="primary"
               @click="openItemDrawer()"

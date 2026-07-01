@@ -19,7 +19,7 @@ public class CheckBoxField extends BaseField implements HasOption {
     @Schema(description = "选项值")
     private List<OptionProp> options;
 
-	@Schema(description = "选项来源", allowableValues = {"custom", "ref"})
+	@Schema(description = "选项来源", allowableValues = {"custom", "ref", "dict"})
 	private String optionSource;
 
 	@Schema(description = "自定义选项值")
@@ -30,6 +30,9 @@ public class CheckBoxField extends BaseField implements HasOption {
 
 	@Schema(description = "引用表单key (optionSource=ref 时生效)")
 	private String refFormKey;
+
+	@Schema(description = "字典分类编码 (optionSource=dict 时生效)")
+	private String dictCode;
 
     @Schema(description = "默认值")
     private List<String> defaultValue;
