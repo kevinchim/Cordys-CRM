@@ -19,13 +19,28 @@ if [ ! -f "$DEPLOY_DIR/crm-main.jar" ]; then
     exit 1
 fi
 
-echo "[1/3] 提取类文件..."
+echo "[1/3] 准备覆盖类..."
 OVERLAY_DIR="$DEPLOY_DIR/app-overlay"
 rm -rf "$OVERLAY_DIR" && mkdir -p "$OVERLAY_DIR"
 cd "$OVERLAY_DIR"
+
+# 解压我们的更新的类
 unzip -oqq "$DEPLOY_DIR/crm-main.jar" '*.class' '*.properties' -x 'META-INF/*' 2>/dev/null || true
 unzip -oqq "$DEPLOY_DIR/framework-main.jar" '*.class' '*.properties' -x 'META-INF/*' 2>/dev/null || true
-echo "  ✅ 已提取 $(find . -name '*.class' | wc -l) 个类文件"
+
+# 从运行中的镜像提取基础类（Application 等）
+TMP_CONT=$(docker create $BASE_IMAGE 2>/dev/null)
+if [ -n "$TMP_CONT" ]; then
+    docker cp "$TMP_CONT:/app/cn" "$OVERLAY_DIR/cn-base" 2>/dev/null || true
+    docker rm "$TMP_CONT" > /dev/null 2>&1 || true
+    # 把基础类目录合并进去（不覆盖已有文件——即我们的更新优先）
+    if [ -d "$OVERLAY_DIR/cn-base" ]; then
+        cp -rn "$OVERLAY_DIR/cn-base/"* "$OVERLAY_DIR/" 2>/dev/null || true
+        rm -rf "$OVERLAY_DIR/cn-base"
+    fi
+fi
+
+echo "  ✅ 类文件就绪"
 
 echo "[2/3] 停止旧容器..."
 docker stop $APP_CONTAINER 2>/dev/null || true
@@ -52,4 +67,4 @@ for i in $(seq 1 30); do
     fi
     sleep 2
 done
-echo "⚠️  启动超时，检查: docker logs $APP_CONTAINER"
+echo "⚠️  检查: docker logs $APP_CONTAINER"
