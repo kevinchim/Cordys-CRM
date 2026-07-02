@@ -45,6 +45,7 @@ echo ""
 
 # ---- Step 2: 安装依赖 ----
 echo "[2/5] 复制源码并安装依赖..."
+docker exec $COMPILE_CONTAINER rm -rf /tmp/frontend-1.7.0 2>/dev/null || true
 docker cp $SOURCE_DIR/frontend $COMPILE_CONTAINER:/tmp/frontend-1.7.0
 
 docker exec $COMPILE_CONTAINER bash -c "

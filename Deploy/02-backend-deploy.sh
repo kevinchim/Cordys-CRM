@@ -53,6 +53,7 @@ docker start $COMPILE_CONTAINER 2>/dev/null || true
 
 # 复制源码到编译容器
 echo "      复制源码到编译容器..."
+docker exec $COMPILE_CONTAINER rm -rf /tmp/CordysCRM-1.7.0 2>/dev/null || true
 docker cp $SOURCE_DIR $COMPILE_CONTAINER:/tmp/CordysCRM-1.7.0
 
 # 执行编译
