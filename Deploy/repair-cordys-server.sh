@@ -1,52 +1,41 @@
 #!/bin/bash
 # ============================================================
-# CordysCRM — 修复 CSRF / 类加载问题
-# 用法: bash Deploy/repair-cordys-server.sh
+# CordysCRM — 一键部署（使用预编译自定义镜像）
+# 用法: bash Deploy/repair-cordys-server.sh [镜像文件]
+#       bash Deploy/repair-cordys-server.sh /path/to/cordys-crm.tar.gz
 # ============================================================
 set -e
 
 APP_CONTAINER="cordys-crm-1.7.0"
 DEPLOY_DIR="${DEPLOY_DIR:-$HOME/cordys-1.7.0}"
-BASE_IMAGE="1panel/cordys-crm:v1.7.0"
+CUSTOM_IMAGE="kevinchim/cordys-crm:v1.7.2-custom"
 NETWORK_NAME="cordyscrm_cordyscrm_default"
+IMAGE_FILE="${1:-$HOME/cordys-crm-v1.7.2-custom.tar.gz}"
 
 echo "========================================="
-echo " CordysCRM — 修复部署"
+echo " CordysCRM — 部署自定义镜像"
 echo "========================================="
 
-if [ ! -f "$DEPLOY_DIR/crm-main.jar" ]; then
-    echo "❌ 未找到 $DEPLOY_DIR/crm-main.jar"
-    exit 1
+# 0. 如果提供了镜像文件，先导入
+if [ -f "$IMAGE_FILE" ]; then
+    echo "[0/3] 导入镜像..."
+    docker load < "$IMAGE_FILE"
+    echo "  ✅ 镜像已导入"
+else
+    echo "⚠️  未找到镜像文件 $IMAGE_FILE"
+    echo "   尝试使用本地镜像..."
 fi
 
-echo "[1/3] 准备覆盖类..."
-OVERLAY_DIR="$DEPLOY_DIR/app-overlay"
-rm -rf "$OVERLAY_DIR" && mkdir -p "$OVERLAY_DIR"
-cd "$OVERLAY_DIR"
-
-# 解压我们的更新的类
-unzip -oqq "$DEPLOY_DIR/crm-main.jar" '*.class' '*.properties' -x 'META-INF/*' 2>/dev/null || true
-unzip -oqq "$DEPLOY_DIR/framework-main.jar" '*.class' '*.properties' -x 'META-INF/*' 2>/dev/null || true
-
-# 从运行中的镜像提取基础类（Application 等）
-TMP_CONT=$(docker create $BASE_IMAGE 2>/dev/null)
-if [ -n "$TMP_CONT" ]; then
-    docker cp "$TMP_CONT:/app/cn" "$OVERLAY_DIR/cn-base" 2>/dev/null || true
-    docker rm "$TMP_CONT" > /dev/null 2>&1 || true
-    # 把基础类目录合并进去（不覆盖已有文件——即我们的更新优先）
-    if [ -d "$OVERLAY_DIR/cn-base" ]; then
-        cp -rn "$OVERLAY_DIR/cn-base/"* "$OVERLAY_DIR/" 2>/dev/null || true
-        rm -rf "$OVERLAY_DIR/cn-base"
-    fi
-fi
-
-echo "  ✅ 类文件就绪"
-
-echo "[2/3] 停止旧容器..."
+# 1. 停止旧容器
+echo "[1/3] 停止旧容器..."
 docker stop $APP_CONTAINER 2>/dev/null || true
 docker rm $APP_CONTAINER 2>/dev/null || true
 
-echo "[3/3] 启动容器..."
+# 2. 清理旧 overlay（不再需要）
+rm -rf "$DEPLOY_DIR/app-overlay" "$DEPLOY_DIR/0-crm-main.jar" "$DEPLOY_DIR/0-framework-main.jar" 2>/dev/null || true
+
+# 3. 启动
+echo "[2/3] 启动新容器..."
 docker run -d \
   --name $APP_CONTAINER \
   --restart unless-stopped \
@@ -55,11 +44,9 @@ docker run -d \
   -v $DEPLOY_DIR/conf:/opt/cordys/conf \
   -v $DEPLOY_DIR/logs:/opt/cordys/logs \
   -v $DEPLOY_DIR/data:/opt/cordys/data \
-  -v $OVERLAY_DIR/cn:/app/cn \
-  $BASE_IMAGE
+  $CUSTOM_IMAGE
 
-echo ""
-echo "等待启动..."
+echo "[3/3] 等待启动..."
 for i in $(seq 1 30); do
     if curl -s -o /dev/null -w "%{http_code}" http://localhost:18084/ 2>/dev/null | grep -q "200\|302"; then
         echo "✅ 部署成功！无痕模式访问 http://服务器IP:18084"
