@@ -51,7 +51,7 @@ docker cp $SOURCE_DIR/frontend $COMPILE_CONTAINER:/tmp/frontend-1.7.0
 docker exec $COMPILE_CONTAINER bash -c "
     cd /tmp/frontend-1.7.0 && \
     npm install -g pnpm@10 && \
-    pnpm i -w --no-frozen-lockfile
+    CI=true pnpm i -w --no-frozen-lockfile
 " && echo "      依赖安装完成" || {
     echo "      ❌ 依赖安装失败"
     exit 1
