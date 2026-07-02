@@ -14,9 +14,9 @@ set -e
 CONF_FILE="$(dirname "$0")/deploy.conf"
 
 # === 自动检测现有容器（如果存在） ===
-DETECT_MYSQL=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -i 'mysql' | head -1 || echo 'cordys-mysql')
-DETECT_REDIS=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -i 'redis' | head -1 || echo 'cordys-redis')
-DETECT_APP=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -i 'cordys-crm\|cordys-crm-1.7' | head -1 || echo 'cordys-crm-1.7.0')
+DETECT_MYSQL=$(docker ps --format '{{.Names}}' 2>/dev/null | grep '^cordys-mysql$' || echo 'cordys-mysql')
+DETECT_REDIS=$(docker ps --format '{{.Names}}' 2>/dev/null | grep '^cordys-redis$' || echo 'cordys-redis')
+DETECT_APP=$(docker ps --format '{{.Names}}' 2>/dev/null | grep '^cordys-crm-1.7.0$' || echo 'cordys-crm-1.7.0')
 DETECT_NET=$(docker inspect "$DETECT_APP" --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null || echo 'cordyscrm_cordyscrm_default')
 
 echo "============================================"

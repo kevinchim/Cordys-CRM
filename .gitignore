@@ -9,8 +9,9 @@
 .venv
 
 # Maven
-.mvn
-!.mvn/maven-wrapper.properties
+.mvn/*
+!.mvn/wrapper/maven-wrapper.properties
+!.mvn/wrapper/maven-wrapper.jar
 .flattened-pom.xml
 
 ############################
