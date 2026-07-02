@@ -68,10 +68,10 @@ docker exec $COMPILE_CONTAINER bash -c "
     exit 1
 }
 
-# 复制 JAR 到部署目录
+# 复制 JAR 到部署目录（用 0- 前缀确保类路径优先加载）
 echo "      复制 JAR 文件..."
-docker cp $COMPILE_CONTAINER:/tmp/CordysCRM-1.7.0/backend/crm/target/crm-main.jar $DEPLOY_DIR/
-docker cp $COMPILE_CONTAINER:/tmp/CordysCRM-1.7.0/backend/framework/target/framework-main.jar $DEPLOY_DIR/
+docker cp $COMPILE_CONTAINER:/tmp/CordysCRM-1.7.0/backend/crm/target/crm-main.jar $DEPLOY_DIR/0-crm-main.jar
+docker cp $COMPILE_CONTAINER:/tmp/CordysCRM-1.7.0/backend/framework/target/framework-main.jar $DEPLOY_DIR/0-framework-main.jar
 
 echo "      完成"
 echo ""
@@ -128,11 +128,12 @@ docker run -d \
     --network $NETWORK_NAME \
     --network-alias $APP_CONTAINER \
     -p $BACKEND_PORT:8081 \
+    -e JAVA_CLASSPATH='/app/lib/0-crm-main.jar:/app/lib/0-framework-main.jar:/app:/app/lib/*' \
     -v $DEPLOY_DIR/conf:/opt/cordys/conf \
     -v $DEPLOY_DIR/logs:/opt/cordys/logs \
     -v $DEPLOY_DIR/data:/opt/cordys/data \
-    -v $DEPLOY_DIR/crm-main.jar:/app/lib/crm-main.jar \
-    -v $DEPLOY_DIR/framework-main.jar:/app/lib/framework-main.jar \
+    -v $DEPLOY_DIR/0-crm-main.jar:/app/lib/0-crm-main.jar \
+    -v $DEPLOY_DIR/0-framework-main.jar:/app/lib/0-framework-main.jar \
     $BASE_IMAGE
 
 echo "      容器已启动"

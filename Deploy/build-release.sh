@@ -55,10 +55,10 @@ echo "========================================="
 echo " CordysCRM — 快速更新"
 echo "========================================="
 
-# 更新后端 JAR
+# 更新后端 JAR（0- 前缀确保类路径优先加载）
 echo "[1/2] 更新后端 JAR..."
-cp "$SCRIPT_DIR/crm-main.jar" "$DEPLOY_DIR/"
-cp "$SCRIPT_DIR/framework-main.jar" "$DEPLOY_DIR/"
+cp "$SCRIPT_DIR/crm-main.jar" "$DEPLOY_DIR/0-crm-main.jar"
+cp "$SCRIPT_DIR/framework-main.jar" "$DEPLOY_DIR/0-framework-main.jar"
 echo "  ✅ JAR 已更新"
 
 # 更新前端
