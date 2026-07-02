@@ -101,6 +101,9 @@ spring.flyway.validate-on-migrate=false
 # 禁用内嵌 MySQL/Redis（使用外部容器）
 mysql.embedded.enabled=false
 redis.embedded.enabled=false
+
+# SSRF 防护
+allowed.ip.ranges.enabled=false
 EOF
 
 echo "      配置文件: $DEPLOY_DIR/conf/cordys-crm.properties"
