@@ -1,0 +1,1 @@
+System.register([],function(t,n){"use strict";return{execute:function(){t({a:function(t){return n.test(t)},b:function(t){return r.test(t.trim())},v:function(t){return e.test(t)}});const n=/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,e=/^\d{11}$/,r=/^https?:\/\/[^\s/$.?#].[^\s]*$/i}}});

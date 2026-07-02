@@ -1,0 +1,1 @@
+import{k as e,P as s,N as o}from"./vue-CmG8bofP.js";import{q as n,s as t}from"./index-B2VXwhHB.js";const l=e({__name:"index",setup(a){const{t:r}=n();return t(),(c,m)=>(s(),o("div",null," workflow "))}});export{l as default};

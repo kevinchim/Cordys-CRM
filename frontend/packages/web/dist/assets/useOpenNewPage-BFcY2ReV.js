@@ -1,0 +1,1 @@
+import{X as a}from"./vue-CmG8bofP.js";function i(){const e=a();function o(n,r={}){const t=new URLSearchParams(r).toString();window.open("".concat(window.location.origin,"#").concat(e.resolve({name:n}).fullPath,"?").concat(t),"_blank")}return{openNewPage:o}}export{i as u};

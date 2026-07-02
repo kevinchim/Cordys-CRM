@@ -1,0 +1,1 @@
+System.register(["./vue-legacy-haCy9Ncu.js"],function(e,n){"use strict";var t;return{setters:[e=>{t=e.X}],execute:function(){e("u",function(){const e=t();return{openNewPage:function(n,t={}){const o=new URLSearchParams(t).toString();window.open(`${window.location.origin}#${e.resolve({name:n}).fullPath}?${o}`,"_blank")}}})}}});

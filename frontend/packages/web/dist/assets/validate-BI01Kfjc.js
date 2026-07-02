@@ -1,0 +1,1 @@
+const e=/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,a=/^\d{11}$/,n=/^https?:\/\/[^\s/$.?#].[^\s]*$/i;function s(t){return e.test(t)}function i(t){return a.test(t)}function r(t){return n.test(t.trim())}export{s as a,r as b,i as v};

@@ -1,0 +1,1 @@
+System.register(["./vue-legacy-haCy9Ncu.js","./index-legacy-BXXjDffd.js"],function(e,t){"use strict";var n,s,r,u,c;return{setters:[e=>{n=e.k,s=e.P,r=e.N},e=>{u=e.q,c=e.s}],execute:function(){e("default",n({__name:"index",setup(e){const{t:t}=u();return c(),(e,t)=>(s(),r("div",null," workflow "))}}))}}});

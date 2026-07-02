@@ -1,0 +1,1 @@
+System.register(["./vue-legacy-haCy9Ncu.js","./index-legacy-BXXjDffd.js"],function(e,t){"use strict";var n,r,u;return{setters:[e=>{n=e.P,r=e.N},e=>{u=e._}],execute:function(){e("default",u({},[["render",function(e,t){return n(),r("div",null," 404 ")}]]))}}});
