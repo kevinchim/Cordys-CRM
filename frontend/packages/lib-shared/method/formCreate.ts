@@ -166,7 +166,8 @@ export function getDisplayFieldText(field: FormCreateField, fieldValue: any) {
     }
   }
 
-  const currentOption = field.options?.find((option: any) => {
+  // 优先从 options 匹配，其次从 customOptions（字典数据源选项）匹配
+  let currentOption = field.options?.find((option: any) => {
     if (option.value === fieldValue) {
       return true;
     }
@@ -175,6 +176,10 @@ export function getDisplayFieldText(field: FormCreateField, fieldValue: any) {
     }
     return false;
   });
+
+  if (!currentOption && field.customOptions?.length) {
+    currentOption = field.customOptions.find((option: any) => option.value === fieldValue);
+  }
 
   return currentOption ? currentOption.label : fieldValue;
 }
