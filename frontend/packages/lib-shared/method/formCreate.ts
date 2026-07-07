@@ -443,10 +443,20 @@ export function transformData({
   });
 
   item.moduleFields?.forEach((field: ModuleField) => {
-    const options = originalData?.optionMap?.[field.fieldId]?.map((e) => ({
+    let options = originalData?.optionMap?.[field.fieldId]?.map((e) => ({
       ...e,
       name: e.name || t('common.optionNotExist'),
     }));
+    // 字典数据源：optionMap 为空时从字段配置的 customOptions 回退
+    if (!options || options.length === 0) {
+      const fieldConfig = fields.find((f: FormCreateField) => f.id === field.fieldId);
+      if (fieldConfig?.customOptions?.length) {
+        options = fieldConfig.customOptions.map((opt: any) => ({
+          id: opt.value,
+          name: opt.label,
+        }));
+      }
+    }
     fieldOptionMap[field.fieldId] = options || [];
     if (addressFieldIds.includes(field.fieldId)) {
       // 地址类型字段，解析代码替换成省市区
