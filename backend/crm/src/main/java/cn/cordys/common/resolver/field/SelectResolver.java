@@ -20,8 +20,10 @@ public class SelectResolver extends AbstractModuleFieldResolver<SelectField> {
         // 校验值类型
         validateString(selectField.getName(), value);
 
-        // 校验选项正确
-        validateOptions(selectField.getName(), value, selectField.getOptions());
+        // 字典数据源的选项由 API 动态加载，跳过选项校验
+        if (!"dict".equals(selectField.getOptionSource())) {
+            validateOptions(selectField.getName(), value, selectField.getOptions());
+        }
     }
 
     @Override

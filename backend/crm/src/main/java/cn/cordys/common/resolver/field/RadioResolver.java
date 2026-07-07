@@ -20,8 +20,10 @@ public class RadioResolver extends AbstractModuleFieldResolver<RadioField> {
         // 校验值类型
         validateString(radioField.getName(), value);
 
-        // 校验选项正确
-        validateOptions(radioField.getName(), value, radioField.getOptions());
+        // 字典数据源的选项由 API 动态加载，跳过选项校验
+        if (!"dict".equals(radioField.getOptionSource())) {
+            validateOptions(radioField.getName(), value, radioField.getOptions());
+        }
     }
 
     @Override

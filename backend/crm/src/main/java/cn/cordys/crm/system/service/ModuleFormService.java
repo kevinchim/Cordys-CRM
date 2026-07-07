@@ -20,6 +20,7 @@ import cn.cordys.common.resolver.field.TextMultipleResolver;
 import cn.cordys.common.resolver.field.TextResolver;
 import cn.cordys.common.service.BaseResourceFieldService;
 import cn.cordys.common.service.FieldSourceServiceProvider;
+import cn.cordys.crm.system.service.DictCategoryService;
 import cn.cordys.common.uid.IDGenerator;
 import cn.cordys.common.uid.SerialNumGenerator;
 import cn.cordys.common.util.BeanUtils;
@@ -137,6 +138,8 @@ public class ModuleFormService {
     @Resource
     private FieldSourceServiceProvider fieldSourceServiceProvider;
     @Resource
+    private DictCategoryService dictCategoryService;
+    @Resource
     private ModuleFieldService moduleFieldService;
 
     /**
@@ -238,6 +241,9 @@ public class ModuleFormService {
         }
 
         if (saveParam.getFields() != null) {
+            // 解析字典数据源选项
+            resolveDictOptions(saveParam.getFields(), currentOrgId);
+
             // 字段合规校验
             preCheckForFieldSave(saveParam.getFormKey(), saveParam.getFields());
 
@@ -1352,6 +1358,33 @@ public class ModuleFormService {
      *
      * @param field 基础字段
      */
+    /**
+     * 解析字典数据源的选项（保存时填充 options）
+     */
+    private void resolveDictOptions(List<BaseField> fields, String orgId) {
+        for (BaseField field : fields) {
+            if (field instanceof HasOption hasOption && "dict".equals(hasOption.getOptionSource())) {
+                // 通过反射获取 dictCode（HasOption 接口未定义 getDictCode）
+                try {
+                    String dictCode = (String) field.getClass().getMethod("getDictCode").invoke(field);
+                    if (dictCode != null && !dictCode.isEmpty()) {
+                        List<DictItem> items = dictCategoryService.getItemsByCode(dictCode, orgId);
+                        List<OptionProp> opts = items.stream().map(item -> {
+                            OptionProp opt = new OptionProp();
+                            opt.setValue(item.getValue());
+                            opt.setLabel(item.getLabel());
+                            return opt;
+                        }).toList();
+                        hasOption.setOptions(opts);
+                        hasOption.setCustomOptions(opts);
+                    }
+                } catch (Exception ignored) {
+                    // dictCode 字段不存在则跳过
+                }
+            }
+        }
+    }
+
     private void handleInitialOption(BaseField field) {
         if (field instanceof MemberField memberField) {
             memberField.setInitialOptions(userExtendService.getUserOptionById(memberField.getDefaultValue()));
