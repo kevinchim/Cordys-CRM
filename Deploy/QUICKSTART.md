@@ -91,3 +91,28 @@ migration/
 ```
 
 重建发布包后，Flyway 启动时**自动执行**新迁移。
+
+## 字典功能修复记录 (2026-07-07)
+
+### 问题：表单字典字段（SELECT/RADIO）保存后值为空
+
+**根因链**：
+1. 后端 `SelectResolver/RadioResolver` 校验 options 时，字典字段的 `options` 为空 → 验证失败
+2. 前端 `transformFieldValue` 将字典字段值清空（选项匹配失败）
+3. 后端 `optionMap` 对字典字段返回空（`field.getOptions()` 为空）
+
+**修复文件**：
+
+| 文件 | 修改 |
+|------|------|
+| `backend/.../resolver/field/SelectResolver.java` | dict 字段跳过 `validateOptions` |
+| `backend/.../resolver/field/RadioResolver.java` | 同上 |
+| `backend/.../service/ModuleFormService.java` | 保存表单时 `resolveDictOptions` 自动填充字典选项 |
+| `frontend/.../lib-shared/method/formCreate.ts` | `transformFieldValue` 对 dict 字段跳过选项匹配 |
+| `frontend/.../lib-shared/method/formCreate.ts` | `getDisplayFieldText` 回退到 `customOptions` |
+| `frontend/.../lib-shared/method/formCreate.ts` | `parseModuleFieldValue` 回退到 `customOptions` |
+| `frontend/.../lib-shared/method/formCreate.ts` | `transformData` 的 `optionMap` 为空时回退到 `customOptions` |
+
+### 部署后操作
+
+**必须**在「模块设置 → 客户表单 → 点保存」触发 `resolveDictOptions` 将字典选项写入配置。之后新建的客户字典字段才能正确校验和显示。
