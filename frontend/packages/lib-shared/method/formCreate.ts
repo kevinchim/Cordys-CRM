@@ -591,6 +591,10 @@ export function transformFieldValue(item: FormCreateField, result: Record<string
     result[key] = result[key]?.replace(/[\s\uFEFF\xA0]+/g, '');
   }
   if ([FieldTypeEnum.SELECT, FieldTypeEnum.RADIO].includes(item.type)) {
+    // 字典数据源的选项由 API 动态加载，不需要做选项匹配清理
+    if (item.optionSource === 'dict') {
+      return;
+    }
     // 处理单选/下拉选择字段，传value值
     const currentOption = item.options?.find((e) => e.value === result[key]);
     if (currentOption) {
