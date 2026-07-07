@@ -190,18 +190,24 @@ export function parseModuleFieldValue(item: FormCreateField, fieldValue: string 
   }
   const { t } = useI18n();
   let value: string | string[] = fieldValue;
-  if (options) {
+  // 字典数据源 options 由 API 动态加载，若未传入则用字段内置的 customOptions
+  const resolvedOptions = options && options.length > 0 ? options : item.customOptions;
+  if (resolvedOptions && resolvedOptions.length > 0) {
     // 若字段值是选项值，则取选项值的name
+    // 兼容 optionMap 的 {id, name} 和 customOptions 的 {value, label} 格式
+    const matchOption = (opt: any, val: string) => opt.id === val || opt.value === val;
+    const getOptName = (opt: any) => opt.name || opt.label;
     if (Array.isArray(fieldValue)) {
       value = fieldValue.map((e) => {
-        const option = options.find((opt) => opt.id === e);
+        const option = resolvedOptions.find((opt) => matchOption(opt, e));
         if (option) {
-          return option.name || t('common.optionNotExist');
+          return getOptName(option) || t('common.optionNotExist');
         }
         return t('common.optionNotExist');
       });
     } else {
-      value = options.find((e) => e.id === fieldValue)?.name || t('common.optionNotExist');
+      const option = resolvedOptions.find((e) => matchOption(e, fieldValue as string));
+      value = option ? (getOptName(option) || t('common.optionNotExist')) : t('common.optionNotExist');
     }
   } else if (
     [
